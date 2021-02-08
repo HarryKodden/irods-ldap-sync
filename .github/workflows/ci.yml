@@ -31,6 +31,11 @@ jobs:
         ports:
           - 1247:1247
 
+      ssh:
+        image: linuxserver/openssh-server
+        ports:
+          - 2222:22
+
     steps:
     - uses: actions/checkout@v2
 
@@ -61,8 +66,8 @@ jobs:
         LDAP_BIND_DN: cn=admin,dc=example,dc=org
 
     # Setup tmate session
-    #- name: Setup tmate session
-    #  uses: mxschmitt/action-tmate@v3
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
 
     - name: Run pytest...
       run: |
