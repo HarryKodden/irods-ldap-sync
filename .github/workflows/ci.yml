@@ -27,7 +27,7 @@ jobs:
           LDAP_TLS: true
 
       irods:
-        image: irods/icat:4.0.3 secret
+        image: irods/icat:4.0.3
         ports:
           - 1247:1247
 
