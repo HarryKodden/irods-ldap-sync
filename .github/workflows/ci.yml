@@ -27,14 +27,9 @@ jobs:
           LDAP_TLS: true
 
       irods:
-        image: irods/icat:4.0.3
+        image: irods/icat:4.0.3 secret
         ports:
           - 1247:1247
-        options: >-
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-          --entrypoint /opt/irods/bootstrap.sh secret
 
     steps:
     - uses: actions/checkout@v2
