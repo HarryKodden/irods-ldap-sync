@@ -67,18 +67,23 @@ jobs:
         LDAP_BIND_DN: cn=admin,dc=example,dc=org
 
     # Setup tmate session
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
+    #- name: Setup tmate session
+    #  uses: mxschmitt/action-tmate@v3
 
     - name: Run pytest...
       run: |
+        export IRODS_PASS=$(docker exec my-irods sed -n 11p /opt/irods/setup_responses)
         export PYTHONPATH="."
         pytest
+        python src/sync.py
       env:
-        LDAP_URL: ldap://localhost:389
-        LDAP_ADMIN_PASSWORD: secret
+        LDAP_HOST: localhost
+        LDAP_PASS: secret
         LDAP_BASE_DN: dc=example,dc=org
         LDAP_BIND_DN: cn=admin,dc=example,dc=org
+        IRDDS_PORT: 1247
+        IRODS_USER: rods
+        IRODS_ZONE: tempZone
         
     - name: Dump ldap...
       run:
