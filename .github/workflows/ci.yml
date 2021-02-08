@@ -79,7 +79,7 @@ jobs:
         ldapsearch -x -H ${LDAP_URL} -b ${LDAP_BASE_DN} -s sub
       env:
         LDAP_URL: ldap://localhost:389
-        LDAP_BASE_DN: dc=sram,dc=tld
+        LDAP_BASE_DN: dc=example,dc=org
     
 
 
