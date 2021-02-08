@@ -1,0 +1,7 @@
+setuptools
+PyYAML
+future-fstrings
+pytest
+pytest-dotenv
+python-ldap
+python-irodsclient

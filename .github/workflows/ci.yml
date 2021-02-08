@@ -1,0 +1,86 @@
+name: CI
+
+on: [push]
+
+jobs:
+
+  test:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python:
+          - '3.6'
+
+    services:
+      ldap:
+        image: osixia/openldap:latest
+        ports:
+          - 389:389
+        env:
+          LDAP_DOMAIN: sram.tld 
+          LDAP_ADMIN_USERNAME: admin
+          LDAP_ADMIN_PASSWORD: secret
+          LDAP_CONFIG_PASSWORD: config
+          LDAP_BASE_DN: dc=example,dc=org
+          LDAP_TLS: true
+
+      irods:
+        image: irods/icat:4.0.3
+        ports:
+          - 1247:1247
+        command: password
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y libsasl2-dev libldap2-dev ldap-utils
+
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install flake8 pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: ldap - Initialization...
+      run: |
+        sleep 5;
+        ldapwhoami -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD};  
+        for f in access eduPerson voPerson groupOfMembers; do ldapadd -H ${LDAP_URL} -D cn=admin,cn=config -w ${LDAP_CONFIG_PASSWORD} -f etc/ldif/$f.ldif; done;
+      env:
+        LDAP_URL: ldap://localhost:389
+        LDAP_ADMIN_PASSWORD: secret
+        LDAP_CONFIG_PASSWORD: config
+        LDAP_BASE_DN: dc=sram,dc=tld
+        LDAP_BIND_DN: cn=admin,dc=example,dc=org
+
+    # Setup tmate session
+    #- name: Setup tmate session
+    #  uses: mxschmitt/action-tmate@v3
+
+    - name: Run pytest...
+      run: |
+        export PYTHONPATH="."
+        pytest
+      env:
+        LDAP_URL: ldap://localhost:389
+        LDAP_ADMIN_PASSWORD: secret
+        LDAP_BASE_DN: dc=sram,dc=tld
+        LDAP_BIND_DN: cn=admin,dc=example,dc=org
+        
+    - name: Dump ldap...
+      run:
+        ldapsearch -x -H ${LDAP_URL} -b ${LDAP_BASE_DN} -s sub
+      env:
+        LDAP_URL: ldap://localhost:389
+        LDAP_BASE_DN: dc=sram,dc=tld
+    
+
+
