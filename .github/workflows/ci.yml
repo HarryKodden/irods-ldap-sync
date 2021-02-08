@@ -77,13 +77,15 @@ jobs:
         pytest
         python src/sync.py
       env:
-        LDAP_HOST: localhost
+        LDAP_HOST: ldap://localhost:389
         LDAP_PASS: secret
         LDAP_BASE_DN: dc=example,dc=org
         LDAP_BIND_DN: cn=admin,dc=example,dc=org
         IRDDS_PORT: 1247
         IRODS_USER: rods
         IRODS_ZONE: tempZone
+        SSH_HOST: localhost
+        SSH_PORT: 2222
         
     - name: Dump ldap...
       run:

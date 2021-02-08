@@ -35,29 +35,34 @@ IRODS_PORT = os.environ.get('IRODS_PORT', 1247)
 IRODS_USER = os.environ.get('IRODS_USER', '')
 IRODS_PASS = os.environ.get('IRODS_PASS', '')
 
+SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
+SSH_PORT = os.environ.get('SSH_PORT', 2222)
+
 import pty
 from subprocess import Popen, PIPE, STDOUT
 from os import fork, waitpid, execv
 
 class ssh():
-    def __init__(self, host, execute='echo "done" > /root/testing.txt', user='root'):
-        self.exec = execute
+    def __init__(self, command, host=SSH_HOST, port=SSH_PORT, user='root'):
+        self.command = command
         self.host = host
+        self.port = port
         self.user = user
         self.run()
 
     def run(self):
         command = [
-                '/usr/bin/ssh',
+                'echo /usr/bin/ssh',
+                '-p', self.port,
                 '-o', 'StrictHostKeyChecking=accept-new',
                 self.user+'@'+self.host,
-                self.exec,
+                self.command
         ]
 
-        logger.debug("Executing command: {} on {}".format(command, self.host))
+        logger.info("Executing command: {} on {}".format(command, self.host))
 
         # PID = 0 for child, and the PID of the child for the parent    
-        pid, child_fd = pty.fork()
+        pid, _ = pty.fork()
 
         if not pid: # Child process
             # Replace child process with our SSH process
@@ -232,13 +237,13 @@ class USER(object):
 
             self.user.metadata.remove_all()
 
-            ssh("shell", "useradd {}".format(self.name))
-            ssh("shell", "su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(self.name))
+            ssh("useradd {}".format(self.name))
+            ssh("su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(self.name))
             try:
                 for k in self.attributes['sshPublicKey']:
-                    ssh("shell", "su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(self.name, k))
+                    ssh("su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(self.name, k))
 
-                ssh("shell", "su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(self.name, k))
+                ssh("su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(self.name, k))
             except:
                 pass
 
@@ -253,7 +258,7 @@ class USER(object):
                     "irods_ssl_verify_server": "none"
                 }, indent=4).replace('"', '\\""')
 
-            ssh("shell", 'su - {} -c "echo -e \'{}\' > .irods/irods_environment.json"'.format(self.name, env))
+            ssh('su - {} -c "echo -e \'{}\' > .irods/irods_environment.json"'.format(self.name, env))
 
             if self.attributes:
                 for k,v in self.attributes.items():
@@ -364,19 +369,26 @@ class GROUP(object):
         self.group = None
         self.members = []
 
-def get_irods_users(sess):
-    query = sess.query(User.name, User.id, User.type).filter(
-        Criterion('=', User.type, 'rodsuser'))
+logger.info("iRODS READ ...")
 
-    for result in query:
-        USER(result[User.name], current=sess.users.get(result[User.name]))
+def get_irods_users(sess):
+    try:
+        query = sess.query(User.name, User.id, User.type).filter(
+            Criterion('=', User.type, 'rodsuser'))
+        for result in query:
+            USER(result[User.name], current=sess.users.get(result[User.name]))
+    except Exception as e:
+        logger.error("iRODS Error: {}".format(str(e)))
 
 def get_irods_groups(sess):
-    query = sess.query(User.name, User.id, User.type).filter(
-        Criterion('=', User.type, 'rodsgroup'))
+    try:
+        query = sess.query(User.name, User.id, User.type).filter(
+            Criterion('=', User.type, 'rodsgroup'))
 
-    for result in query:
-        GROUP(result[User.name], current=sess.user_groups.get(result[User.name]))
+        for result in query:
+            GROUP(result[User.name], current=sess.user_groups.get(result[User.name]))
+    except Exception as e:
+        logger.error("iRODS Error: {}".format(str(e)))
 
 get_irods_users(irods_session)
 get_irods_groups(irods_session)
