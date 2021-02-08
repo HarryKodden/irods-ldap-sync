@@ -30,6 +30,11 @@ jobs:
         image: irods/icat:4.0.3
         ports:
           - 1247:1247
+        options: >-
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          --entrypoint /opt/irods/bootstrap.sh secret
         command: password
 
     steps:
