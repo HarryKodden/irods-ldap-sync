@@ -59,6 +59,7 @@ jobs:
         sleep 5;
         ldapwhoami -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD};  
         for f in access eduPerson voPerson groupOfMembers; do ldapadd -H ${LDAP_URL} -D cn=admin,cn=config -w ${LDAP_CONFIG_PASSWORD} -f etc/ldif/$f.ldif; done;
+        for f in service; do ldapadd -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD} -f etc/ldif/$f.ldif; done;
       env:
         LDAP_URL: ldap://localhost:389
         LDAP_ADMIN_PASSWORD: secret
@@ -75,24 +76,15 @@ jobs:
         export IRODS_PASS=$(docker exec my-irods sed -n 11p /opt/irods/setup_responses)
         export PYTHONPATH="."
         pytest
-        python src/sync.py
       env:
         LDAP_HOST: ldap://localhost:389
-        LDAP_PASS: secret
+        LDAP_ADMIN_PASSWORD: secret
         LDAP_BASE_DN: dc=example,dc=org
         LDAP_BIND_DN: cn=admin,dc=example,dc=org
         IRDDS_PORT: 1247
         IRODS_USER: rods
         IRODS_ZONE: tempZone
         SSH_HOST: localhost
-        SSH_PORT: 2222
-        
-    - name: Dump ldap...
-      run:
-        ldapsearch -x -H ${LDAP_URL} -b ${LDAP_BASE_DN} -s sub
-      env:
-        LDAP_URL: ldap://localhost:389
-        LDAP_BASE_DN: dc=example,dc=org
-    
+        SSH_PORT: 2222    
 
 

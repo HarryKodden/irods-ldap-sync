@@ -5,6 +5,7 @@ source .env
 etc/ldap_stop.sh 2>&1 >/dev/null
 
 # Start LDAP server
+docker run \
   --name my-ldap \
   --env LDAP_DOMAIN="${LDAP_DOMAIN:-example.org}" \
   --env LDAP_BASE_DN="${LDAP_BASE_DN:-dc=example,dc=org}" \
@@ -27,5 +28,5 @@ docker exec my-ldap ldapadd -H ldap://localhost -D cn=admin,cn=config -w "${LDAP
 docker exec my-ldap ldapadd -H ldap://localhost -D cn=admin,cn=config -w  "${LDAP_CONFIG_PASSWORD:-changeme}" -f /tmp/ldif/voPerson.ldif
 docker exec my-ldap ldapadd -H ldap://localhost -D cn=admin,cn=config -w  "${LDAP_CONFIG_PASSWORD:-changeme}" -f /tmp/ldif/groupOfMembers.ldif
 
-# Add services basedn
-docker exec my-ldap ldapadd -H ldap://localhost -D "${LDAP_BIND_DN:-cn=admin,dc=example,dc=org}" -w  "${LDAP_ADMIN_PASSWORD:-changeme}" -f /tmp/ldif/sram_services.ldif
+# Add service...
+docker exec my-ldap ldapadd -H ldap://localhost -D "${LDAP_BIND_DN:-cn=admin,dc=example,dc=org}" -w  "${LDAP_ADMIN_PASSWORD:-changeme}" -f /tmp/ldif/service.ldif

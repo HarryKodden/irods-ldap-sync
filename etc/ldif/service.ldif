@@ -1,0 +1,127 @@
+# services.example.org
+dn: dc=services,dc=example,dc=org
+dc: services
+objectClass: dcObject
+objectClass: organization
+o: Services
+
+# https://mail.services.example.org
+dn: dc=https://mail,dc=services,dc=example,dc=org
+objectClass: dcObject
+objectClass: organization
+dc: https://mail
+o: https://mail
+
+# admin, https://mail.services.example.org
+dn: cn=admin,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: organizationalRole
+cn: admin
+
+# ordered.https://mail.services.example.org
+dn: dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: dcObject
+objectClass: organizationalUnit
+dc: ordered
+ou: ordered
+
+# uuc.ai_computing, ordered.https://mail.services.example.org
+dn: o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: top
+objectClass: organization
+objectClass: extensibleObject
+o: uuc.ai_computing
+host: c-007-001-002.client.surfnet.eduvpn.nl:slp
+uniqueIdentifier: 6703ed6a-9d1a-4ab6-91d0-5825d968c833
+description: Artifical Intelligence computing for the Unincorporated Urban Community
+displayName: AI computing
+
+# Groups, uuc.ai_computing, ordered.https://mail.services.example.org
+dn: ou=Groups,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: top
+objectClass: organizationalUnit
+ou: Groups
+
+# People, uuc.ai_computing, ordered.https://mail.services.example.org
+dn: ou=People,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: top
+objectClass: organizationalUnit
+ou: People
+
+# admin, People, uuc.ai_computing, ordered.https://mail.services.example.org
+dn: uid=admin,ou=People,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: eduPerson
+objectClass: voPerson
+eduPersonUniqueId: urn:admin
+displayName: The Boss
+givenName: n/a
+sn: n/a
+cn: The Boss
+mail: boss@example.org
+eduPersonScopedAffiliation: member@example.org
+uid: admin
+
+# jane, People, uuc.ai_computing, ordered.https://mail.services.example.org
+dn: uid=jane,ou=People,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: eduPerson
+objectClass: voPerson
+eduPersonUniqueId: urn:jane
+displayName: Jane Doe
+givenName: n/a
+sn: n/a
+cn: Jane Doe
+mail: jane@ucc.org
+eduPersonScopedAffiliation: member@example.org
+uid: jane
+
+# ai_res, Groups, uuc.ai_computing, ordered.https://mail.services.example.org
+dn: cn=ai_res,ou=Groups,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: extensibleObject
+objectClass: groupOfMembers
+cn: ai_res
+uniqueIdentifier: 87502364-6bdf-4a13-999d-5fdd6260b1bc
+member: uid=jane,ou=People,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+description: Artifical computing researchers
+displayName: AI researchers
+
+# john, People, uuc.ai_computing, ordered.https://mail.services.example.org
+dn: uid=john,ou=People,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: eduPerson
+objectClass: voPerson
+objectClass: ldapPublicKey
+eduPersonUniqueId: urn:john
+displayName: John Doe
+givenName: n/a
+sn: n/a
+cn: John Doe
+mail: john@example.org
+eduPersonScopedAffiliation: member@example.org
+uid: john
+sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC/nvjea1zJJNCnyUfT6HLcHDhw
+ CMp7uqr4BzxhDAjBnjWcgW4hZJvtLTqCLspS6mogCq2d0/31DU4DnGb2MO28gk74MiVBtAQWI5+Ts
+ O5QHupO3V6aLrKhmn8xn1PKc9JycgjOa4BMQ1meomn3Zmph6oo87MCtF2w75cxYEBJ9dJgHzZsn9m
+ w+w8Z3H1vYnkcBT/i2MIK+qfsue/tvEe8ybi+26bGQIZIPDcd+OmDUBxDLWyBwCbVOyRL5M6ywnWJ
+ INLdpIwfqCUk24J1q1qiJ5eZu0m0uDcG5KRzgZ+grnSSYBwCx1xCunoGjMg7iwxEMgScD02nKtiij
+ xEpu8soL okke@Mikes-MBP-2.fritz.box
+
+# jdoe, People, uuc.ai_computing, ordered.https://mail.services.example.org
+dn: uid=jdoe,ou=People,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: eduPerson
+objectClass: voPerson
+eduPersonUniqueId: 900613f87a9c8539b15729264ccc50af20c865ba@acc.sram.eduteams.org
+displayName: John admin Doe
+givenName: John admin
+sn: Doe
+cn: John admin Doe
+mail: j.doe@example.com
+voPersonExternalAffiliation: affiliate@university-example.org
+eduPersonScopedAffiliation: member@example.org
+voPersonExternalID: j.doe@example.com
+uid: jdoe

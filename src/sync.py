@@ -26,9 +26,6 @@ log_level = os.environ.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=logging.getLevelName(log_level), format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger('root')
 
-start_time = datetime.now()
-logger.info("SYNC started at: {}".format(start_time))
-
 IRODS_ZONE = os.environ.get('IRODS_ZONE', 'tempZone')
 IRODS_HOST = os.environ.get('IRODS_HOST', 'localhost')
 IRODS_PORT = os.environ.get('IRODS_PORT', 1247)
@@ -38,10 +35,10 @@ IRODS_PASS = os.environ.get('IRODS_PASS', '')
 SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
 SSH_PORT = os.environ.get('SSH_PORT', 2222)
 
-import pty
-from subprocess import Popen, PIPE, STDOUT
-from os import fork, waitpid, execv
+DRY_RUN = (os.environ.get('DRY_RUN','FALSE').upper() == 'TRUE')
 
+from pty import fork
+from os import waitpid, execv
 class ssh():
     def __init__(self, command, host=SSH_HOST, port=SSH_PORT, user='root'):
         self.command = command
@@ -52,8 +49,8 @@ class ssh():
 
     def run(self):
         command = [
-                'echo /usr/bin/ssh',
-                '-p', self.port,
+                '/usr/bin/ssh',
+                '-p', '{}'.format(self.port),
                 '-o', 'StrictHostKeyChecking=accept-new',
                 self.user+'@'+self.host,
                 self.command
@@ -61,166 +58,188 @@ class ssh():
 
         logger.info("Executing command: {} on {}".format(command, self.host))
 
-        # PID = 0 for child, and the PID of the child for the parent    
-        pid, _ = pty.fork()
+        pid, _ = fork()
 
-        if not pid: # Child process
-            # Replace child process with our SSH process
+        if not pid:
             execv(command[0], command)
-
+            
         waitpid(pid, 0)
 
-try:  
-  ldap_session = ldap.initialize(os.environ['LDAP_HOST'])
-  ldap_session.simple_bind_s(os.environ['LDAP_BIND_DN'], os.environ['LDAP_PASS'])
-except Exception as e:
-  logger.error("Problem connecting to LDAP {} error: {}".format(os.environ['LDAP_HOST'], str(e)))
-  exit(1)
+class Ldap(object):
 
-try:
-  irods_session = iRODSSession(host=IRODS_HOST, port=IRODS_PORT, user=IRODS_USER, password=IRODS_PASS, zone=IRODS_ZONE)
-except Exception as e:
-  logger.error("Problem connecting to IRODS {} error: {}".format(os.environ['IRODS_HOST'], str(e)))
-  exit(1)
+    def __init__(self):
+        # Establish connection with LDAP...
+        try:  
+            self.session = ldap.initialize(os.environ['LDAP_HOST'])
+            self.session.simple_bind_s(os.environ['LDAP_BIND_DN'], os.environ['LDAP_ADMIN_PASSWORD'])
 
-def _ldap(dn, operation, ldif = None, searchScope = None, searchFilter = None, retrieveAttributes = None):
-    result = None
-    try:
-      result_set = []
+            self.people = {}
+            self.groups = {}
 
-      ldap_result_id = ldap_session.search(dn, searchScope, searchFilter, retrieveAttributes)
-      while 1:
-        result_type, result_data = ldap_session.result(ldap_result_id, 0)
-        if (result_data == []):
-          break
-        else:
-          if result_type == ldap.RES_SEARCH_ENTRY:
-            result_set.append(result_data)
+        except Exception as e:
+            logger.error("Problem connecting to LDAP {} error: {}".format(os.environ['LDAP_HOST'], str(e)))
+            exit(1)
 
-      result = result_set
+    def __exit__(self):
+        try:
+            self.session.unbind_s()
+        except:
+            pass
 
-    except ldap.LDAPError as e:
-       result = None
-       logger.error("[IRODS] REQUEST: %s\n" % str(e))
+    def search(self, dn, searchScope = ldap.SCOPE_SUBTREE, searchFilter = "(objectclass=*)", retrieveAttributes = []):
 
-    #logger.debug(result)
-    return result
+        result = None
+        try:
+            result_set = []
 
-def ldap_search(dn, searchScope = ldap.SCOPE_SUBTREE, searchFilter = "(objectclass=*)", retrieveAttributes = []):
-    return _ldap(dn, "SEARCH", searchScope=searchScope, searchFilter=searchFilter, retrieveAttributes=retrieveAttributes)
+            ldap_result_id = self.session.search(dn, searchScope, searchFilter, retrieveAttributes)
+            while 1:
+                result_type, result_data = self.session.result(ldap_result_id, 0)
+                if (result_data == []):
+                    break
+                elif result_type == ldap.RES_SEARCH_ENTRY:
+                    result_set.append(result_data)
 
-ldap_groups = {}
-ldap_people = {}
+            result = result_set
 
-def get_attributes(x):
-   attributes = {} 
-   
-   for a in x.keys():
-        attributes[a] = []
-        for v in x[a]:
-            attributes[a].append(v.decode())
+        except ldap.LDAPError as e:
+            result = None
+            logger.error("[IRODS] REQUEST: %s\n" % str(e))
 
-   return attributes
+        return result
 
-ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
-ldap_group_key = os.environ.get('LDAP_GROUP_KEY', 'cn')
+    def show_people(self):
+        logger.debug("LDAP People: %s\n" % json.dumps(self.people, sort_keys=True, indent=4))
 
-for i in ldap_search(os.environ['LDAP_BASE_DN'],
-	searchFilter = "(&(objectClass=inetOrgPerson)({}=*))".format(ldap_user_key),
-	retrieveAttributes = []):
 
-    attributes = get_attributes(i[0][1])
+    def show_groups(self):
+        logger.debug("LDAP_Groups: %s" % json.dumps(self.groups, sort_keys=True, indent=4))
 
-    if ldap_user_key not in attributes:
-        logger.error("Missing '{}' attribute in LDAP USER Object !", ldap_user_key)
-        continue
+    @staticmethod
+    def get_attributes(x):
+        attributes = {} 
+    
+        for a in x.keys():
+                attributes[a] = []
+                for v in x[a]:
+                    attributes[a].append(v.decode())
 
-    if len(attributes[ldap_user_key]) > 1:
-        logger.error("LDAP User key '{}' must be 1 value !".format(ldap_user_key))
-        continue
+        return attributes
 
-    key = attributes[ldap_user_key][0]
+    def get_people(self):
+        ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
 
-    ldap_people[key] = { 'attributes': attributes }
-   
-logger.debug("LDAP Users: %s\n" % json.dumps(ldap_people, sort_keys=True, indent=4))
+        for i in self.search(
+            os.environ['LDAP_BASE_DN'],
+            searchFilter = "(&(objectClass=inetOrgPerson)({}=*))".format(ldap_user_key),
+            retrieveAttributes = []):
 
-for i in ldap_search(os.environ['LDAP_BASE_DN'],
- 	searchFilter = "({})".format(os.environ.get('LDAP_FILTER', "objectClass=groupOfMembers")),
-	retrieveAttributes = []): 
+            attributes = self.get_attributes(i[0][1])
 
-    attributes = get_attributes(i[0][1])
-
-    if ldap_group_key not in attributes:
-        logger.error("Missing '{}' attribute in LDAP GROUP Object !".format(ldap_group_key))
-        continue
-
-    if len(attributes[ldap_group_key]) > 1:
-        logger.error("LDAP Group key '{}' must be 1 value !".format(ldap_group_key))
-        continue
-
-    key = attributes[ldap_group_key][0]
-
-    members = []
-
-    if 'member' in attributes:
-
-        for member in attributes['member']:
-
-            m = member.split(',')[0].split('=')[1]
-
-            if m not in ldap_people:
-                logger.error("Member {} not in LDAP People !".format(m))
+            if ldap_user_key not in attributes:
+                logger.error("Missing '{}' attribute in LDAP USER Object !", ldap_user_key)
                 continue
 
-            members.append(m)
+            if len(attributes[ldap_user_key]) > 1:
+                logger.error("LDAP User key '{}' must be 1 value !".format(ldap_user_key))
+                continue
 
-    attributes['member'] = members
+            key = attributes[ldap_user_key][0]
 
-    ldap_groups[key] = { 'attributes': attributes }
+            self.people[key] = { 'attributes': attributes }
+        
+    def get_groups(self):
+        ldap_group_key = os.environ.get('LDAP_GROUP_KEY', 'cn')
 
-logger.debug("LDAP_Groups: %s" % json.dumps(ldap_groups, sort_keys=True, indent=4))
+        for i in self.search(
+            os.environ['LDAP_BASE_DN'],
+            searchFilter = "({})".format(os.environ.get('LDAP_FILTER', "objectClass=groupOfMembers")),
+            retrieveAttributes = []): 
 
-irods_users = {}
-irods_groups = {}
+            attributes = self.get_attributes(i[0][1])
+
+            if ldap_group_key not in attributes:
+                logger.error("Missing '{}' attribute in LDAP GROUP Object !".format(ldap_group_key))
+                continue
+
+            if len(attributes[ldap_group_key]) > 1:
+                logger.error("LDAP Group key '{}' must be 1 value !".format(ldap_group_key))
+                continue
+
+            key = attributes[ldap_group_key][0]
+
+            members = []
+
+            if 'member' in attributes:
+
+                for member in attributes['member']:
+
+                    m = member.split(',')[0].split('=')[1]
+
+                    if m not in self.people:
+                        logger.error("Member {} not in LDAP People !".format(m))
+                        continue
+
+                    members.append(m)
+
+            attributes['member'] = members
+
+            self.groups[key] = { 'attributes': attributes }
+
+
+
+class iRODS(object):
+
+    def __init__(self):
+        try:
+            self.session = iRODSSession(host=IRODS_HOST, port=IRODS_PORT, user=IRODS_USER, password=IRODS_PASS, zone=IRODS_ZONE)
+        except Exception as e:
+            logger.error("Problem connecting to IRODS {} error: {}".format(os.environ['IRODS_HOST'], str(e)))
+            exit(1)
+    
+    def __exit__(self):
+        try:
+            self.session.cleanup()
+        except:
+            pass
+
+
 
 class USER(object):
 
-    def __init__(self, name, current=None):
+    def __init__(self, name, instance):
         self.name = name
         self.must_keep = False
-        self.user = current
+        self.irods_instance = instance
         self.attributes = None
 
         logger.debug("IRODS User: {}".format(self))
 
-        irods_users[name] = self
-
     def __repr__(self):
-        return json.dumps(self.json())
+        return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { 'name': self.name, 'current': self.current() }
+        return { 'name': self.name, 'attibutes': self.attributes, 'instance': self.instance() }
 
-    def current(self):
-        if self.user: 
-            return { 'id': self.user.id, 'name': self.user.name, 'type': self.user.type, 'zone': self.user.zone, 'metadata': self.metadata() }
+    def instance(self):
+        if self.irods_instance:
+            return { 'id': self.irods_instance.id, 'name': self.irods_instance.name, 'type': self.irods_instance.type, 'zone': self.irods_instance.zone, 'metadata': self.metadata() }
         else:
             return {}
 
     def metadata(self):
-        if self.user:
-            result = {}
-            for k in self.user.metadata.keys():
+        result = {}
 
-                result[k] = []
+        if not self.irods_instance: return result
 
-                for v in self.user.metadata.get_all(k):
-                    result[k].append(v.value)
+        for k in self.irods_instance.metadata.keys():
 
-            return result
-        else:
-            return {}
+            result[k] = []
+
+            for v in self.irods_instance.metadata.get_all(k):
+                result[k].append(v.value)
+
+        return result
 
     def keep(self, attributes=None):
         self.must_keep = True
@@ -228,18 +247,17 @@ class USER(object):
         return self
     
     def sync(self):
+        if not self.irods_instance: return
+
         if not self.must_keep:
             self.remove()
         else:
-            if not self.user:
-                logger.info("IRODS Create User: {}".format(self.name))
-                self.user = irods_session.users.create(self.name, 'rodsuser')
-
-            self.user.metadata.remove_all()
+            self.irods_instance.metadata.remove_all()
 
             ssh("useradd {}".format(self.name))
             ssh("su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(self.name))
             try:
+                raise Exception("Not yet !")
                 for k in self.attributes['sshPublicKey']:
                     ssh("su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(self.name, k))
 
@@ -263,63 +281,59 @@ class USER(object):
             if self.attributes:
                 for k,v in self.attributes.items():
                     for i in v:
-                        self.user.metadata.add(k, i)
+                        self.irods_instance.metadata.add(k, i)
 
     def remove(self):
-        if self.user:
-            logger.info("IRODS Remove User: {}".format(self.name))
-            self.user.remove()
+        if not self.irods_instance: return
+
+        logger.info("IRODS Remove User: {}".format(self.name))
+        self.irods_instance.remove()
 
         ssh("shell", "userdel -r {}".format(self.name))
 
         self.must_keep = False
-        self.user = None
+        self.irods_instance = None
 
 class GROUP(object):
 
-    def __init__(self, name, current=None):
+    def __init__(self, name, instance):
         self.name = name
         self.must_keep = False
         self.attributes = None
         self.members = {}
-        self.group = current
+        self.irods_instance = instance
 
-        if name in ['public', 'rodsadmin']:
-            self.must_keep = True
-
-        if current:
-           for m in current.members:
-              self.members[m.name] = False
+        if self.irods_instance:
+            for m in self.irods_instance.members:
+                self.members[m.name] = False
 
         logger.debug("IRODS Group: {}".format(self))
 
-        irods_groups[name] = self
-
     def __repr__(self):
-        return json.dumps(self.json())
+        return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { "name" : self.name, 'metadata': self.metadata(), 'members': self.members, 'current': self.current() }
+        return { "name" : self.name, 'attibutes': self.attributes, 'metadata': self.metadata(), 'members': self.members, 'instance': self.instance() }
 
-    def current(self):
-        if self.group: 
-            return { 'id': self.group.id, 'name': self.group.name, 'metadata': self.metadata() }
+    def instance(self):
+        if self.irods_instance: 
+            return { 'id': self.irods_instance.id, 'name': self.irods_instance.name, 'metadata': self.metadata() }
         else:
             return {}
 
     def metadata(self):
-        if self.group:
-            result = {}
-            for k in self.group.metadata.keys():
+        result = {}
 
-                result[k] = []
+        if not self.irods_instance: return result
 
-                for v in self.group.metadata.get_all(k):
-                    result[k].append(v.value)
+        for k in self.irods_instance.metadata.keys():
 
-            return result
-        else:
-            return {}
+            result[k] = []
+
+            for v in self.irods_instance.metadata.get_all(k):
+                result[k].append(v.value)
+
+        return result
 
     def keep(self, attributes=None):
         self.must_keep = True
@@ -329,103 +343,160 @@ class GROUP(object):
     def member(self, member):
         self.must_keep = True
         self.members[member] = True
-        self.attributes = attributes
         return self
 
     def sync(self):
+        if not self.irods_instance: return
+
         if not self.must_keep:
             self.remove()
         else:
-            if not self.group:
-                logger.info("IRODS Create Group: {}".format(self.name))
-                self.group = irods_session.user_groups.create(self.name)
-
             for m in self.members.keys():
-                if not self.members[m] and self.group.hasmember(m):
+                if not self.members[m] and self.irods_instance.hasmember(m):
                     logger.info("IRODS Remove {} from Group: {}".format(m, self.name))
-                    self.group.removemember(m)
-                if self.members[m] and not self.group.hasmember(m):
+                    self.irods_instance.removemember(m)
+                if self.members[m] and not self.irods_instance.hasmember(m):
                     logger.info("IRODS Add {} to Group: {}".format(m, self.name))
-                    self.group.addmember(m)
+                    self.irods_instance.addmember(m)
 
-            self.group.metadata.remove_all()
+            self.irods_instance.metadata.remove_all()
 
             if self.attributes:
                 for k,v in self.attributes.items():
                     for i in v:
-                        self.group.metadata.add(k, i)
+                        self.irods_instance.metadata.add(k, i)
 
     def remove(self):
+        if not self.irods_instance: return
 
-        if self.group:
-            for m in self.members:
-                if self.group.hasmember(m):
-                    self.group.removemember(m)
+        for m in self.members:
+            if self.irods_instance.hasmember(m):
+                self.irods_instance.removemember(m)
 
-            logger.info("IRODS Remove Group: {}".format(self.name))
-            self.group.remove()
+        logger.info("IRODS Remove Group: {}".format(self.name))
+        self.irods_instance.remove()
 
         self.must_keep = False
-        self.group = None
+        self.irods_instance = None
         self.members = []
 
-logger.info("iRODS READ ...")
-
-def get_irods_users(sess):
-    try:
-        query = sess.query(User.name, User.id, User.type).filter(
-            Criterion('=', User.type, 'rodsuser'))
-        for result in query:
-            USER(result[User.name], current=sess.users.get(result[User.name]))
-    except Exception as e:
-        logger.error("iRODS Error: {}".format(str(e)))
-
-def get_irods_groups(sess):
-    try:
-        query = sess.query(User.name, User.id, User.type).filter(
-            Criterion('=', User.type, 'rodsgroup'))
-
-        for result in query:
-            GROUP(result[User.name], current=sess.user_groups.get(result[User.name]))
-    except Exception as e:
-        logger.error("iRODS Error: {}".format(str(e)))
-
-get_irods_users(irods_session)
-get_irods_groups(irods_session)
-
-for _, u in irods_users.items():
-    logger.debug(f"User: {str(u)}")
-
-for _, g in irods_groups.items():
-    logger.debug(f"Group: {str(g)}")
-
-
-# Make sure all LDAP entries are instantiated
-
-for u in ldap_people.keys():
-  if u not in irods_users:
-    USER(u)
-
-  irods_users[u].keep(ldap_people[u]['attributes'])
-
-for g in ldap_groups.keys():
-  if g not in irods_groups:
-     GROUP(g)
-
-  group = irods_groups[g].keep(ldap_groups[g]['attributes'])
-
-  for m in ldap_groups[g]['attributes']['member']:
-    group.member(m)
-
-# Now finalize sync...
-
-for u in irods_users.keys():
-    irods_users[u].sync()
+class iRODS_Users(iRODS):
     
-for g in irods_groups.keys():
-    irods_groups[g].sync()
+    def __init__(self):
+        super().__init__()
+        self.users = {}
 
-irods_session.cleanup()
-ldap_session.unbind_s()
+    def json(self):
+        return { 'users': [ u.json() for _, u in self.users.items() ] }
 
-logger.info("SYNC completed at: {}".format(start_time))
+    def __repr__(self):
+        return json.dumps(self.json(), indent=4, sort_keys=True)
+
+    def add(self, name, instance=None):
+        if name in self.users: return
+
+        if not instance:
+            logger.info("IRODS Create User: {}".format(name))
+            if not DRY_RUN:
+                instance = self.session.users.create(name, 'rodsuser')
+
+        self.users[name] = USER(name, instance)
+
+    def read(self):
+        query = self.session.query(User.name, User.id, User.type).filter(
+            Criterion('=', User.type, 'rodsuser'))
+
+        for result in query:
+            name = result[User.name]
+
+            self.add(name, instance=self.session.users.get(name))
+
+        logger.debug("iRODS Users: {}".format(self))
+
+        return self
+
+    def sync(self):
+        for i in self.users.keys():
+            self.users[i].sync()
+
+class iRODS_Groups(iRODS):
+    
+    def __init__(self):
+        super().__init__()
+        self.groups = {}
+
+    def json(self):
+        return { 'groups': [ g.json() for _, g in self.groups.items() ] }
+
+    def __repr__(self):
+        return json.dumps(self.json(), indent=4, sort_keys=True)
+
+    def add(self, name, instance=None):
+        if name in self.groups: return
+
+        if not instance:
+            logger.info("IRODS Create Group: {}".format(name))
+            if not DRY_RUN:
+                instance = self.session.user_groups.create(name)
+
+        self.groups[name] = GROUP(name, instance)
+
+    def read(self):        
+        query = self.session.query(User.name, User.id, User.type).filter(
+                Criterion('=', User.type, 'rodsgroup'))
+
+        for result in query:
+            name = result[User.name]
+            if name in ['rodsadmin', 'public']:
+                continue
+
+            self.add(name, instance=self.session.user_groups.get(name))
+        
+        logger.debug("iRODS Groups: {}".format(self))
+
+        return self
+
+    def sync(self):
+        for i in self.groups.keys():
+            self.groups[i].sync()
+    
+
+def run():
+
+    start_time = datetime.now()
+    logger.info("SYNC started at: {}".format(start_time))
+
+    # Read LDAP...
+    my_ldap = Ldap()
+    my_ldap.get_people()
+    my_ldap.get_groups()
+
+    # Sync iRODS people...
+    my_irods = iRODS_Users().read()
+
+    for u in my_ldap.people.keys():
+        if u not in my_irods.users:
+            my_irods.add(u)
+
+        my_irods.users[u].keep(my_ldap.people[u]['attributes'])
+
+    my_irods.sync()
+
+    # Sync iRODS groups...
+    my_irods = iRODS_Groups().read()
+
+    for g in my_ldap.groups.keys():
+        if g not in my_irods.groups:
+            my_irods.add(g)
+
+        group = my_irods.groups[g].keep(my_ldap.groups[g]['attributes'])
+
+        for m in my_ldap.groups[g]['attributes']['member']:
+            group.member(m)
+
+    my_irods.sync()
+
+    logger.info("SYNC completed at: {}".format(start_time))
+
+if __name__ == "__main__":
+    run()
