@@ -107,7 +107,7 @@ sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC/nvjea1zJJNCnyUfT6HLcHDhw
  O5QHupO3V6aLrKhmn8xn1PKc9JycgjOa4BMQ1meomn3Zmph6oo87MCtF2w75cxYEBJ9dJgHzZsn9m
  w+w8Z3H1vYnkcBT/i2MIK+qfsue/tvEe8ybi+26bGQIZIPDcd+OmDUBxDLWyBwCbVOyRL5M6ywnWJ
  INLdpIwfqCUk24J1q1qiJ5eZu0m0uDcG5KRzgZ+grnSSYBwCx1xCunoGjMg7iwxEMgScD02nKtiij
- xEpu8soL okke@Mikes-MBP-2.fritz.box
+ xEpu8soL
 
 # jdoe, People, uuc.ai_computing, ordered.https://mail.services.example.org
 dn: uid=jdoe,ou=People,o=uuc.ai_computing,dc=ordered,dc=https://mail,dc=services,dc=example,dc=org

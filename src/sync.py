@@ -197,12 +197,6 @@ class iRODS(object):
             logger.error("Problem connecting to IRODS {} error: {}".format(os.environ['IRODS_HOST'], str(e)))
             exit(1)
     
-    def __exit__(self):
-        try:
-            self.session.cleanup()
-        except:
-            pass
-
 class USER(object):
 
     def __init__(self, name, instance):
@@ -310,7 +304,7 @@ class GROUP(object):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { "name" : self.name, 'members': self.members, 'instance': self.instance() }
+        return { "name" : self.name, 'members': [ m for m in self.members.keys() ], 'instance': self.instance() }
 
     def instance(self):
         if self.irods_instance: 
@@ -416,6 +410,8 @@ class iRODS_Users(iRODS):
         for i in self.users.keys():
             self.users[i].sync()
 
+        self.session.cleanup()
+
 class iRODS_Groups(iRODS):
     
     def __init__(self):
@@ -456,7 +452,9 @@ class iRODS_Groups(iRODS):
     def sync(self):
         for i in self.groups.keys():
             self.groups[i].sync()
-    
+
+        self.session.cleanup()
+
 
 def run():
 
@@ -486,10 +484,10 @@ def run():
         if g not in my_irods.groups:
             my_irods.add(g)
 
-        group = my_irods.groups[g].keep(my_ldap.groups[g]['attributes'])
+        my_irods.groups[g].keep(my_ldap.groups[g]['attributes'])
 
         for m in my_ldap.groups[g]['attributes']['member']:
-            group.member(m)
+            my_irods.groups[g].member(m)
 
     my_irods.sync()
 

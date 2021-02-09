@@ -85,6 +85,8 @@ jobs:
         IRODS_USER: rods
         IRODS_ZONE: tempZone
         SSH_HOST: localhost
-        SSH_PORT: 2222    
+        SSH_PORT: 2222
+        DRY_RUN: False
+        LOG_LEVEL: INFO    
 
 
