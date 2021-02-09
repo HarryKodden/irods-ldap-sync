@@ -203,8 +203,6 @@ class iRODS(object):
         except:
             pass
 
-
-
 class USER(object):
 
     def __init__(self, name, instance):
@@ -219,7 +217,7 @@ class USER(object):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { 'name': self.name, 'attibutes': self.attributes, 'instance': self.instance() }
+        return { 'name': self.name, 'instance': self.instance() }
 
     def instance(self):
         if self.irods_instance:
@@ -257,7 +255,6 @@ class USER(object):
             ssh("useradd {}".format(self.name))
             ssh("su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(self.name))
             try:
-                raise Exception("Not yet !")
                 for k in self.attributes['sshPublicKey']:
                     ssh("su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(self.name, k))
 
@@ -313,7 +310,7 @@ class GROUP(object):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { "name" : self.name, 'attibutes': self.attributes, 'metadata': self.metadata(), 'members': self.members, 'instance': self.instance() }
+        return { "name" : self.name, 'members': self.members, 'instance': self.instance() }
 
     def instance(self):
         if self.irods_instance: 
