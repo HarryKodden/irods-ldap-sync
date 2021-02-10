@@ -18,7 +18,7 @@ Please look in the **.github/workflows/ci.yml** for configuration details
 
 You have multiple run options:
 1. Run locally with LDAP and iRODS docker containers.
-2. Connect to exisiting LDAP and/or iRODS instances
+2. Connect to existing LDAP and/or iRODS instances
 ### Run on localhost
 
 Running on localhost: (docker is required !)
@@ -63,7 +63,7 @@ IRDDS_PORT|1247|The iRODS service port to connect to
 IRODS_USER|rods|iRODS administrator user
 IRODS_PASS|password|iRODS administrator user
 IRODS_ZONE|tempZone|The iRODS zone
-LOG_LEVEL|INFO|Loglevel can be NONE, DEBUG, INFO, WARN, ERROR
-DRY_RUN|False|Eithe True or False, when True No updates are performed to iRODS.
+LOG_LEVEL|INFO|Loglevel can be **NONE**, **DEBUG**, **INFO**, **WARN**, **ERROR**
+DRY_RUN|False|Either **True** or **False**, when True No updates are performed to iRODS.
 
 

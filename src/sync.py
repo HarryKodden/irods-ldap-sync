@@ -188,15 +188,7 @@ class Ldap(object):
 
 
 
-class iRODS(object):
 
-    def __init__(self):
-        try:
-            self.session = iRODSSession(host=IRODS_HOST, port=IRODS_PORT, user=IRODS_USER, password=IRODS_PASS, zone=IRODS_ZONE)
-        except Exception as e:
-            logger.error("Problem connecting to IRODS {} error: {}".format(os.environ['IRODS_HOST'], str(e)))
-            exit(1)
-    
 class USER(object):
 
     def __init__(self, name, instance):
@@ -371,29 +363,48 @@ class GROUP(object):
         self.irods_instance = None
         self.members = []
 
-class iRODS_Users(iRODS):
+class iRODS(object):
     
     def __init__(self):
-        super().__init__()
-        self.users = {}
+        try:
+            self.session = iRODSSession(host=IRODS_HOST, port=IRODS_PORT, user=IRODS_USER, password=IRODS_PASS, zone=IRODS_ZONE)
+        except Exception as e:
+            logger.error("Problem connecting to IRODS {} error: {}".format(os.environ['IRODS_HOST'], str(e)))
+            exit(1)
+
+        self.users = {}    
+        self.groups = {}
 
     def json(self):
-        return { 'users': [ u.json() for _, u in self.users.items() ] }
+        return { 
+            'users': [ u.json() for _, u in self.users.items() ],
+            'groups': [ g.json() for _, g in self.groups.items() ] 
+        }
 
     def __repr__(self):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def add(self, name, instance=None):
-        if name in self.users: return
 
-        if not instance:
-            logger.info("IRODS Create User: {}".format(name))
-            if not DRY_RUN:
+        if isinstance(instance, iRODSUser):
+            if name in self.users: return
+
+            if not instance and not DRY_RUN:
+                logger.info("IRODS Create User: {}".format(name))
                 instance = self.session.users.create(name, 'rodsuser')
+    
+            self.users[name] = USER(name, instance)
 
-        self.users[name] = USER(name, instance)
+        if isinstance(instance, iRODSUserGroup):
+            if name in self.groups: return
 
-    def read(self):
+            logger.info("IRODS Create Group: {}".format(name))
+            if not instance and not DRY_RUN:
+                instance = self.session.user_groups.create(name)
+
+            self.groups[name] = GROUP(name, instance)
+
+    def get_users(self):
         query = self.session.query(User.name, User.id, User.type).filter(
             Criterion('=', User.type, 'rodsuser'))
 
@@ -406,35 +417,7 @@ class iRODS_Users(iRODS):
 
         return self
 
-    def sync(self):
-        for i in self.users.keys():
-            self.users[i].sync()
-
-        self.session.cleanup()
-
-class iRODS_Groups(iRODS):
-    
-    def __init__(self):
-        super().__init__()
-        self.groups = {}
-
-    def json(self):
-        return { 'groups': [ g.json() for _, g in self.groups.items() ] }
-
-    def __repr__(self):
-        return json.dumps(self.json(), indent=4, sort_keys=True)
-
-    def add(self, name, instance=None):
-        if name in self.groups: return
-
-        if not instance:
-            logger.info("IRODS Create Group: {}".format(name))
-            if not DRY_RUN:
-                instance = self.session.user_groups.create(name)
-
-        self.groups[name] = GROUP(name, instance)
-
-    def read(self):        
+    def get_groups(self):        
         query = self.session.query(User.name, User.id, User.type).filter(
                 Criterion('=', User.type, 'rodsgroup'))
 
@@ -450,11 +433,15 @@ class iRODS_Groups(iRODS):
         return self
 
     def sync(self):
-        for i in self.groups.keys():
-            self.groups[i].sync()
+        logger.debug("Syncing...")
+
+        for _, u in self.users.items():
+            u.sync()
+
+        for _, g in self.groups.items():
+            g.sync()
 
         self.session.cleanup()
-
 
 def run():
 
@@ -466,20 +453,19 @@ def run():
     my_ldap.get_people()
     my_ldap.get_groups()
 
-    # Sync iRODS people...
-    my_irods = iRODS_Users().read()
-
+    # Read iRODS...
+    my_irods = iRODS()
+    my_irods.get_users()
+    my_irods.get_groups()
+    
+    # process iRODS people...
     for u in my_ldap.people.keys():
         if u not in my_irods.users:
             my_irods.add(u)
 
         my_irods.users[u].keep(my_ldap.people[u]['attributes'])
 
-    my_irods.sync()
-
-    # Sync iRODS groups...
-    my_irods = iRODS_Groups().read()
-
+    # process iRODS groups...
     for g in my_ldap.groups.keys():
         if g not in my_irods.groups:
             my_irods.add(g)
@@ -489,6 +475,7 @@ def run():
         for m in my_ldap.groups[g]['attributes']['member']:
             my_irods.groups[g].member(m)
 
+    # Write changes to iRODS 
     my_irods.sync()
 
     logger.info("SYNC completed at: {}".format(start_time))
