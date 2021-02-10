@@ -2,24 +2,15 @@
 from __future__ import print_function
 
 import os
-import sys
 import ldap
 import json
-import argparse
 import logging
-import random
-import re
-import signal
-import time
+
 from datetime import datetime
-from enum import Enum
 
 from irods.session import iRODSSession
 from irods.column import Criterion
-from irods.exception import iRODSException, UserDoesNotExist, UserGroupDoesNotExist, \
-    CAT_INVALID_GROUP, CATALOG_ALREADY_HAS_ITEM_BY_THAT_NAME
-from irods.models import User, UserGroup
-from irods.user import iRODSUser, iRODSUserGroup
+from irods.models import User
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -197,9 +188,6 @@ class Ldap(object):
             attributes['member'] = members
 
             self.groups[key] = { 'attributes': attributes }
-
-
-
 
 class USER(object):
 
@@ -399,25 +387,24 @@ class iRODS(object):
     def __repr__(self):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
-    def add(self, name, instance=None):
+    def add_user(self, name, instance=None):
+        if name in self.users: return
 
-        if isinstance(instance, iRODSUser):
-            if name in self.users: return
-
-            if not instance and not DRY_RUN:
-                logger.info("IRODS Create User: {}".format(name))
-                instance = self.session.users.create(name, 'rodsuser')
+        if not instance and not DRY_RUN:
+            logger.info("IRODS Create User: {}".format(name))
+            instance = self.session.users.create(name, 'rodsuser')
     
-            self.users[name] = USER(name, instance)
+        self.users[name] = USER(name, instance)
 
-        if isinstance(instance, iRODSUserGroup):
-            if name in self.groups: return
+    def add_group(self, name, instance=None):
+        if name in self.groups: return
 
+        if not instance and not DRY_RUN:
             logger.info("IRODS Create Group: {}".format(name))
             if not instance and not DRY_RUN:
                 instance = self.session.user_groups.create(name)
-
-            self.groups[name] = GROUP(name, instance)
+    
+        self.groups[name] = GROUP(name, instance)
 
     def get_users(self):
         query = self.session.query(User.name, User.id, User.type).filter(
@@ -426,7 +413,7 @@ class iRODS(object):
         for result in query:
             name = result[User.name]
 
-            self.add(name, instance=self.session.users.get(name))
+            self.add_user(name, instance=self.session.users.get(name))
 
         logger.debug("iRODS Users: {}".format(self))
 
@@ -441,7 +428,7 @@ class iRODS(object):
             if name in ['rodsadmin', 'public']:
                 continue
 
-            self.add(name, instance=self.session.user_groups.get(name))
+            self.add_group(name, instance=self.session.user_groups.get(name))
         
         logger.debug("iRODS Groups: {}".format(self))
 
@@ -472,14 +459,14 @@ def run():
     # process iRODS people...
     for u in my_ldap.people.keys():
         if u not in my_irods.users:
-            my_irods.add(u)
+            my_irods.add_user(u)
 
         my_irods.users[u].keep(my_ldap.people[u]['attributes'])
 
     # process iRODS groups...
     for g in my_ldap.groups.keys():
         if g not in my_irods.groups:
-            my_irods.add(g)
+            my_irods.add_group(g)
 
         my_irods.groups[g].keep(my_ldap.groups[g]['attributes'])
 
