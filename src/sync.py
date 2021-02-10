@@ -73,12 +73,15 @@ class Ldap(object):
             self.session = ldap.initialize(os.environ['LDAP_HOST'])
             self.session.simple_bind_s(os.environ['LDAP_BIND_DN'], os.environ['LDAP_ADMIN_PASSWORD'])
 
-            self.people = {}
-            self.groups = {}
-
         except Exception as e:
             logger.error("Problem connecting to LDAP {} error: {}".format(os.environ['LDAP_HOST'], str(e)))
             exit(1)
+
+        self.people = {}
+        self.groups = {}
+
+        self.get_people()
+        self.get_groups()
 
     def __exit__(self):
         try:
@@ -86,6 +89,15 @@ class Ldap(object):
         except:
             pass
 
+    def __repr__(self):
+        return json.dumps(self.json(), indent=4, sort_keys=True)
+
+    def json(self):
+        return { 
+            'people': self.people,
+            'groups': self.groups
+        }
+        
     def search(self, dn, searchScope = ldap.SCOPE_SUBTREE, searchFilter = "(objectclass=*)", retrieveAttributes = []):
 
         result = None
@@ -375,6 +387,9 @@ class iRODS(object):
         self.users = {}    
         self.groups = {}
 
+        self.get_users()
+        self.get_groups()
+
     def json(self):
         return { 
             'users': [ u.json() for _, u in self.users.items() ],
@@ -450,13 +465,9 @@ def run():
 
     # Read LDAP...
     my_ldap = Ldap()
-    my_ldap.get_people()
-    my_ldap.get_groups()
 
     # Read iRODS...
     my_irods = iRODS()
-    my_irods.get_users()
-    my_irods.get_groups()
     
     # process iRODS people...
     for u in my_ldap.people.keys():
