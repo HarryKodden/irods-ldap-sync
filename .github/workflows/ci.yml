@@ -75,7 +75,7 @@ jobs:
 
     - name: Start iRODS...
       run: |
-        set .env;
+        cat .env;
         bin/irods_start.sh;
 
     - name: ldap - Initialization...
