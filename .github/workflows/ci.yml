@@ -61,7 +61,7 @@ jobs:
         echo -e "LDAP_URL=${LDAP_URL}\nLDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}\nLDAP_BASE_DN=${LDAP_BASE_DN}\nLDAP_BIND_DN=${LDAP_BIND_DN}\n" >> .env;
       env:
         IRODS_HOST: localhost
-        IRDDS_PORT: 1247
+        IRODS_PORT: 1247
         IRODS_USER: rods
         IRODS_PASS: password
         IRODS_ZONE: tempZone
