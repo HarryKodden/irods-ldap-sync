@@ -68,11 +68,8 @@ jobs:
         docker logs my-irods-icommands;
 
     # Setup tmate session
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
+    #- name: Setup tmate session
+    #  uses: mxschmitt/action-tmate@v3
 
     - name: Run pytest...
-      run: |
-        export IRODS_PASS=$(docker exec my-irods sed -n 11p /opt/irods/setup_responses)
-        export PYTHONPATH="."
-        pytest
+      run: pytest
