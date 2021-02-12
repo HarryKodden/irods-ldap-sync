@@ -54,19 +54,27 @@ jobs:
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Start iRODS...
+    - name: create .env
       run: |
-        echo -e "IRODS_HOST ${IRODS_HOST}\nIRODS_PORT ${IRODS_PORT}\nIRODS_USER ${IRODS_USER}\nIRODS_ZONE ${IRODS_ZONE}\n" > .env
-        echo -e "SSH_HOST ${SSH_HOST}\nSSH_PORT ${SSH_PORT}\nSSH_USER ${IRODS_USER}\n" >> .env
-        bin/irods_start.sh
+        echo -e "IRODS_HOST=${IRODS_HOST}\nIRODS_PORT=${IRODS_PORT}\nIRODS_USER=${IRODS_USER}\nIRODS_ZONE=${IRODS_ZONE}\n" > .env
+        echo -e "SSH_HOST=${SSH_HOST}\nSSH_PORT=${SSH_PORT}\nSSH_USER=${IRODS_USER}\n" >> .env
+        echo -e "LDAP_URL=${LDAP_URL}\nLDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}\nLDAP_BASE_DN=${LDAP_BASE_DN}\nLDAP_BIND_DN=${LDAP_BIND_DN}\n" >> .env
       env:
-        IRODS_HOST: icat
+        IRODS_HOST: localhost
         IRDDS_PORT: 1247
         IRODS_USER: rods
         IRODS_PASS: password
         IRODS_ZONE: tempZone
         SSH_HOST: localhost
         SSH_PORT: 2222
+        LDAP_URL: ldap://localhost:389
+        LDAP_ADMIN_PASSWORD: secret
+        LDAP_CONFIG_PASSWORD: config
+        LDAP_BASE_DN: dc=example,dc=org
+        LDAP_BIND_DN: cn=admin,dc=example,dc=org
+
+    - name: Start iRODS...
+        bin/irods_start.sh
 
     - name: ldap - Initialization...
       run: |
