@@ -16,6 +16,7 @@ class TestAll(BaseTest):
         run()
 
     def test_03_irods(self):
+        return
         my_irods = iRODS()
         logger.info(my_irods)
 
