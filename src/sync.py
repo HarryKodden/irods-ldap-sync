@@ -25,13 +25,13 @@ IRODS_PASS = os.environ.get('IRODS_PASS', '')
 
 SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
 SSH_PORT = os.environ.get('SSH_PORT', 2222)
+SSH_USER = os.environ.get('SSH_USER', 'root')
 
 DRY_RUN = (os.environ.get('DRY_RUN','FALSE').upper() == 'TRUE')
 
-from pty import fork
-from os import waitpid, execv
+import subprocess
 class ssh():
-    def __init__(self, command, host=SSH_HOST, port=SSH_PORT, user='root'):
+    def __init__(self, command, host=SSH_HOST, port=SSH_PORT, user=SSH_USER):
         self.command = command
         self.host = host
         self.port = port
@@ -39,22 +39,20 @@ class ssh():
         self.run()
 
     def run(self):
+
         command = [
                 '/usr/bin/ssh',
                 '-p', '{}'.format(self.port),
-                '-o', 'StrictHostKeyChecking=accept-new',
+                '-o', 'StrictHostKeyChecking=no',
                 self.user+'@'+self.host,
                 self.command
         ]
 
         logger.info("Executing command: {} on {}".format(command, self.host))
+        if DRY_RUN: return
 
-        pid, _ = fork()
-
-        if not pid:
-            execv(command[0], command)
-            
-        waitpid(pid, 0)
+        result = subprocess.run(command, capture_output=True, text=True)
+        logger.info("stdout:\n{}".format(result.stdout))
 
 class Ldap(object):
 
@@ -236,20 +234,21 @@ class USER(object):
         if not self.must_keep:
             self.remove()
         else:
-            self.irods_instance.metadata.remove_all()
+            if not DRY_RUN:
+                self.irods_instance.metadata.remove_all()
 
-            ssh("useradd {}".format(self.name))
-            ssh("su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(self.name))
+            ssh("sudo useradd -m {}".format(self.name))
+            ssh("sudo su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(self.name))
             try:
                 for k in self.attributes['sshPublicKey']:
-                    ssh("su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(self.name, k))
+                    ssh("sudo su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(self.name, k))
 
-                ssh("su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(self.name, k))
+                ssh("sudo su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(self.name, k))
             except:
                 pass
 
             env = json.dumps({
-                    "irods_host": "{}".format(IRODS_HOST),
+                    "irods_host": "icat",
                     "irods_port": int(IRODS_PORT),
                     "irods_user_name": "{}".format(self.name),
                     "irods_zone_name": "{}".format(IRODS_ZONE),
@@ -259,9 +258,18 @@ class USER(object):
                     "irods_ssl_verify_server": "none"
                 }, indent=4).replace('"', '\\""')
 
-            ssh('su - {} -c "echo -e \'{}\' > .irods/irods_environment.json"'.format(self.name, env))
+            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/irods_environment.json"'.format(self.name, env))
 
-            if self.attributes:
+            env = f"""
+            irodsHost icat
+            irodsPort {IRODS_PORT}
+            irodsUserName {self.name}
+            irodsZone {IRODS_ZONE}
+            """
+
+            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/.irodsEnv"'.format(self.name, env))
+
+            if not DRY_RUN and self.attributes:
                 for k,v in self.attributes.items():
                     for i in v:
                         self.irods_instance.metadata.add(k, i)
@@ -270,9 +278,10 @@ class USER(object):
         if not self.irods_instance: return
 
         logger.info("IRODS Remove User: {}".format(self.name))
-        self.irods_instance.remove()
+        if not DRY_RUN:
+            self.irods_instance.remove()
 
-        ssh("shell", "userdel -r {}".format(self.name))
+        ssh("sudo userdel -r {}".format(self.name))
 
         self.must_keep = False
         self.irods_instance = None
@@ -336,15 +345,18 @@ class GROUP(object):
         else:
             for m in self.members.keys():
                 if not self.members[m] and self.irods_instance.hasmember(m):
-                    logger.info("IRODS Remove {} from Group: {}".format(m, self.name))
-                    self.irods_instance.removemember(m)
+                    logger.info("IRODS Remove {} from Group: {} ...".format(m, self.name))
+                    if not DRY_RUN:
+                        self.irods_instance.removemember(m)
                 if self.members[m] and not self.irods_instance.hasmember(m):
-                    logger.info("IRODS Add {} to Group: {}".format(m, self.name))
-                    self.irods_instance.addmember(m)
+                    logger.info("IRODS Add {} to Group: {}...".format(m, self.name))
+                    if not DRY_RUN:
+                        self.irods_instance.addmember(m)
 
-            self.irods_instance.metadata.remove_all()
+            if not DRY_RUN:
+                self.irods_instance.metadata.remove_all()
 
-            if self.attributes:
+            if not DRY_RUN and self.attributes:
                 for k,v in self.attributes.items():
                     for i in v:
                         self.irods_instance.metadata.add(k, i)
@@ -354,10 +366,13 @@ class GROUP(object):
 
         for m in self.members:
             if self.irods_instance.hasmember(m):
-                self.irods_instance.removemember(m)
+                logger.info("IRODS Remove {} from group: {}...".format(m, self.name))
+                if not DRY_RUN:
+                    self.irods_instance.removemember(m)
 
         logger.info("IRODS Remove Group: {}".format(self.name))
-        self.irods_instance.remove()
+        if not DRY_RUN:
+            self.irods_instance.remove()
 
         self.must_keep = False
         self.irods_instance = None
@@ -377,6 +392,10 @@ class iRODS(object):
 
         self.get_users()
         self.get_groups()
+
+    def __exit__(self):
+        self.session.cleanup()
+        self.session = None
 
     def json(self):
         return { 
@@ -442,8 +461,6 @@ class iRODS(object):
 
         for _, g in self.groups.items():
             g.sync()
-
-        self.session.cleanup()
 
 def run():
 

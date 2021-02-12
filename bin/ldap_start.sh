@@ -2,7 +2,7 @@
 
 source .env
 
-etc/ldap_stop.sh 2>&1 >/dev/null
+bin/ldap_stop.sh 2>&1 >/dev/null
 
 # Start LDAP server
 docker run \

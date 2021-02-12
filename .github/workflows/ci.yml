@@ -26,33 +26,47 @@ jobs:
           LDAP_BASE_DN: dc=example,dc=org
           LDAP_TLS: true
 
-      irods:
-        image: irods/icat:4.0.3
-        ports:
-          - 1247:1247
-        options: --name my-irods
+#     irods:
+#       image: irods/icat:4.0.3
+#       ports:
+#         - 1247:1247
+#       options: --name my-irods
 
-      ssh:
-        image: linuxserver/openssh-server
-        ports:
-          - 2222:22
+#     ssh:
+#       image: linuxserver/openssh-server
+#       ports:
+#         - 2222:22
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install dependencies
+    - name: Install system dependencies
       run: sudo apt-get update && sudo apt-get install -y libsasl2-dev libldap2-dev ldap-utils
 
     - name: Set up Python ${{ matrix.python }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python }}
-
-    - name: Install dependencies
+    
+    - name: Install application dependencies
       run: |
         python3 -m pip install --upgrade pip
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Start iRODS...
+      run: |
+        echo -e "IRODS_HOST ${IRODS_HOST}\nIRODS_PORT ${IRODS_PORT}\nIRODS_USER ${IRODS_USER}\nIRODS_ZONE ${IRODS_ZONE}\n" > .env
+        echo -e "SSH_HOST ${SSH_HOST}\nSSH_PORT ${SSH_PORT}\nSSH_USER ${IRODS_USER}\n" >> .env
+        bin/irods_start.sh
+      env:
+        IRODS_HOST: icat
+        IRDDS_PORT: 1247
+        IRODS_USER: rods
+        IRODS_PASS: password
+        IRODS_ZONE: tempZone
+        SSH_HOST: localhost
+        SSH_PORT: 2222
 
     - name: ldap - Initialization...
       run: |
