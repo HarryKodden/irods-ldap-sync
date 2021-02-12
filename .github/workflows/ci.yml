@@ -13,30 +13,6 @@ jobs:
         python:
           - '3.7'
 
-#   services:
-#     ldap:
-#       image: osixia/openldap:latest
-#       ports:
-#         - 389:389
-#       env:
-#         LDAP_DOMAIN: example.org
-#         LDAP_ADMIN_USERNAME: admin
-#         LDAP_ADMIN_PASSWORD: secret
-#         LDAP_CONFIG_PASSWORD: config
-#         LDAP_BASE_DN: dc=example,dc=org
-#         LDAP_TLS: true
-
-#     irods:
-#       image: irods/icat:4.0.3
-#       ports:
-#         - 1247:1247
-#       options: --name my-irods
-
-#     ssh:
-#       image: linuxserver/openssh-server
-#       ports:
-#         - 2222:22
-
     steps:
     - uses: actions/checkout@v2
 
@@ -56,7 +32,7 @@ jobs:
 
     - name: create .env
       run: |
-        echo -e "IRODS_HOST=${IRODS_HOST}\nIRODS_PORT=${IRODS_PORT}\nIRODS_USER=${IRODS_USER}\nIRODS_ZONE=${IRODS_ZONE}\n" > .env;
+        echo -e "IRODS_HOST=${IRODS_HOST}\nIRODS_PORT=${IRODS_PORT}\nIRODS_USER=${IRODS_USER}\nIRODS_PASS=${IRODS_PASS}\nIRODS_ZONE=${IRODS_ZONE}\n" > .env;
         echo -e "SSH_HOST=${SSH_HOST}\nSSH_PORT=${SSH_PORT}\nSSH_USER=${IRODS_USER}\n" >> .env;
         echo -e "LDAP_HOST=${LDAP_HOST}\nLDAP_CONFIG_PASSWORD=${LDAP_CONFIG_PASSWORD}\nLDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}\nLDAP_BASE_DN=${LDAP_BASE_DN}\nLDAP_BIND_DN=${LDAP_BIND_DN}\n" >> .env;
       env:
@@ -90,18 +66,6 @@ jobs:
         docker logs my-irods-icat;
         sleep 20;
         docker logs my-irods-icommands;
-
-#   - name: ldap - Initialization...
-#     run: |
-#       ldapwhoami -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD};  
-#       for f in access eduPerson voPerson groupOfMembers; do ldapadd -H ${LDAP_URL} -D cn=admin,cn=config -w ${LDAP_CONFIG_PASSWORD} -f etc/ldif/$f.ldif; done;
-#       for f in service; do ldapadd -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD} -f etc/ldif/$f.ldif; done;
-#     env:
-#       LDAP_URL: ldap://localhost:389
-#       LDAP_ADMIN_PASSWORD: secret
-#       LDAP_CONFIG_PASSWORD: config
-#       LDAP_BASE_DN: dc=example,dc=org
-#       LDAP_BIND_DN: cn=admin,dc=example,dc=org
 
     # Setup tmate session
     - name: Setup tmate session
