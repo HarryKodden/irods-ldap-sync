@@ -74,6 +74,7 @@ jobs:
         LDAP_BIND_DN: cn=admin,dc=example,dc=org
 
     - name: Start iRODS...
+      run: |
         bin/irods_start.sh
 
     - name: ldap - Initialization...
