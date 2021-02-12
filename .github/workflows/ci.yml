@@ -11,20 +11,20 @@ jobs:
     strategy:
       matrix:
         python:
-          - '3.6'
+          - '3.7'
 
-    services:
-      ldap:
-        image: osixia/openldap:latest
-        ports:
-          - 389:389
-        env:
-          LDAP_DOMAIN: example.org
-          LDAP_ADMIN_USERNAME: admin
-          LDAP_ADMIN_PASSWORD: secret
-          LDAP_CONFIG_PASSWORD: config
-          LDAP_BASE_DN: dc=example,dc=org
-          LDAP_TLS: true
+#   services:
+#     ldap:
+#       image: osixia/openldap:latest
+#       ports:
+#         - 389:389
+#       env:
+#         LDAP_DOMAIN: example.org
+#         LDAP_ADMIN_USERNAME: admin
+#         LDAP_ADMIN_PASSWORD: secret
+#         LDAP_CONFIG_PASSWORD: config
+#         LDAP_BASE_DN: dc=example,dc=org
+#         LDAP_TLS: true
 
 #     irods:
 #       image: irods/icat:4.0.3
@@ -67,7 +67,7 @@ jobs:
         IRODS_ZONE: tempZone
         SSH_HOST: localhost
         SSH_PORT: 2222
-        LDAP_URL: ldap://localhost:389
+        LDAP_HOST: ldap://localhost:389
         LDAP_ADMIN_PASSWORD: secret
         LDAP_CONFIG_PASSWORD: config
         LDAP_BASE_DN: dc=example,dc=org
@@ -78,9 +78,10 @@ jobs:
         mkdir -p ~/.ssh;
         ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N '';
 
-    - name: Start iRODS...
+    - name: Start LDAP & iRODS...
       run: |
         cat .env;
+        bin/ldap_start.sh;
         bin/irods_start.sh;
 
     - name: Check running iRODS...
@@ -90,17 +91,17 @@ jobs:
         sleep 20;
         docker logs my-irods-icommands;
 
-    - name: ldap - Initialization...
-      run: |
-        ldapwhoami -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD};  
-        for f in access eduPerson voPerson groupOfMembers; do ldapadd -H ${LDAP_URL} -D cn=admin,cn=config -w ${LDAP_CONFIG_PASSWORD} -f etc/ldif/$f.ldif; done;
-        for f in service; do ldapadd -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD} -f etc/ldif/$f.ldif; done;
-      env:
-        LDAP_URL: ldap://localhost:389
-        LDAP_ADMIN_PASSWORD: secret
-        LDAP_CONFIG_PASSWORD: config
-        LDAP_BASE_DN: dc=example,dc=org
-        LDAP_BIND_DN: cn=admin,dc=example,dc=org
+#   - name: ldap - Initialization...
+#     run: |
+#       ldapwhoami -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD};  
+#       for f in access eduPerson voPerson groupOfMembers; do ldapadd -H ${LDAP_URL} -D cn=admin,cn=config -w ${LDAP_CONFIG_PASSWORD} -f etc/ldif/$f.ldif; done;
+#       for f in service; do ldapadd -H ${LDAP_URL} -D ${LDAP_BIND_DN} -w ${LDAP_ADMIN_PASSWORD} -f etc/ldif/$f.ldif; done;
+#     env:
+#       LDAP_URL: ldap://localhost:389
+#       LDAP_ADMIN_PASSWORD: secret
+#       LDAP_CONFIG_PASSWORD: config
+#       LDAP_BASE_DN: dc=example,dc=org
+#       LDAP_BIND_DN: cn=admin,dc=example,dc=org
 
     # Setup tmate session
     - name: Setup tmate session
