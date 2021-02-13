@@ -56,14 +56,15 @@ jobs:
 
     - name: Start LDAP & iRODS...
       run: |
-        cat .env;
         bin/ldap_start.sh;
         bin/irods_start.sh;
 
     - name: Check running iRODS...
       run: |
+        # icat container needs some time for initialization...
         sleep 10;
         docker logs my-irods-icat;
+        # icommands container needs some (more) time for initialization...
         sleep 20;
         docker logs my-irods-icommands;
 
