@@ -14,7 +14,9 @@ from irods.models import User
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
-logging.basicConfig(level=logging.getLevelName(log_level), format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(
+    level=logging.getLevelName(log_level),
+    format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger('root')
 
 IRODS_ZONE = os.environ.get('IRODS_ZONE', 'tempZone')
@@ -27,9 +29,11 @@ SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
 SSH_PORT = os.environ.get('SSH_PORT', 2222)
 SSH_USER = os.environ.get('SSH_USER', 'root')
 
-DRY_RUN = (os.environ.get('DRY_RUN','FALSE').upper() == 'TRUE')
+DRY_RUN = (os.environ.get('DRY_RUN', 'FALSE').upper() == 'TRUE')
 
 import subprocess
+
+
 class ssh():
     def __init__(self, command, host=SSH_HOST, port=SSH_PORT, user=SSH_USER):
         self.command = command
@@ -49,7 +53,9 @@ class ssh():
         ]
 
         logger.info("Executing command: {} on {}".format(command, self.host))
-        if DRY_RUN: return
+
+        if DRY_RUN:
+            return
 
         result = subprocess.run(command, capture_output=True, text=True)
         logger.info("stdout:\n{}".format(result.stdout))
@@ -58,9 +64,12 @@ class Ldap(object):
 
     def __init__(self):
         # Establish connection with LDAP...
-        try:  
+        try:
             self.session = ldap.initialize(os.environ['LDAP_HOST'])
-            self.session.simple_bind_s(os.environ['LDAP_BIND_DN'], os.environ['LDAP_ADMIN_PASSWORD'])
+            self.session.simple_bind_s(
+                os.environ['LDAP_BIND_DN'],
+                os.environ['LDAP_ADMIN_PASSWORD']
+            )
 
         except Exception as e:
             logger.error("Problem connecting to LDAP {} error: {}".format(os.environ['LDAP_HOST'], str(e)))
@@ -73,27 +82,30 @@ class Ldap(object):
         self.get_groups()
 
     def __exit__(self):
-        try:
-            self.session.unbind_s()
-        except:
-            pass
+        self.session.unbind_s()
 
     def __repr__(self):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { 
+        return {
             'people': self.people,
             'groups': self.groups
         }
-        
-    def search(self, dn, searchScope = ldap.SCOPE_SUBTREE, searchFilter = "(objectclass=*)", retrieveAttributes = []):
+
+    def search(self, dn, searchScope=ldap.SCOPE_SUBTREE,
+            searchFilter="(objectclass=*)",
+            retrieveAttributes=[]):
 
         result = None
         try:
             result_set = []
 
-            ldap_result_id = self.session.search(dn, searchScope, searchFilter, retrieveAttributes)
+            ldap_result_id = self.session.search(
+                dn, searchScope,
+                searchFilter,
+                retrieveAttributes
+            )
             while 1:
                 result_type, result_data = self.session.result(ldap_result_id, 0)
                 if (result_data == []):
@@ -109,21 +121,14 @@ class Ldap(object):
 
         return result
 
-    def show_people(self):
-        logger.debug("LDAP People: %s\n" % json.dumps(self.people, sort_keys=True, indent=4))
-
-
-    def show_groups(self):
-        logger.debug("LDAP_Groups: %s" % json.dumps(self.groups, sort_keys=True, indent=4))
-
     @staticmethod
     def get_attributes(x):
-        attributes = {} 
-    
+        attributes = {}
+
         for a in x.keys():
-                attributes[a] = []
-                for v in x[a]:
-                    attributes[a].append(v.decode())
+            attributes[a] = []
+            for v in x[a]:
+                attributes[a].append(v.decode())
 
         return attributes
 
@@ -131,9 +136,9 @@ class Ldap(object):
         ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
 
         for i in self.search(
-            os.environ['LDAP_BASE_DN'],
-            searchFilter = "(&(objectClass=inetOrgPerson)({}=*))".format(ldap_user_key),
-            retrieveAttributes = []):
+                os.environ['LDAP_BASE_DN'],
+                searchFilter="(&(objectClass=inetOrgPerson)({}=*))".format(ldap_user_key),
+                retrieveAttributes=[]):
 
             attributes = self.get_attributes(i[0][1])
 
@@ -147,15 +152,21 @@ class Ldap(object):
 
             key = attributes[ldap_user_key][0]
 
-            self.people[key] = { 'attributes': attributes }
-        
+            self.people[key] = {
+                'attributes': attributes
+            }
+
     def get_groups(self):
         ldap_group_key = os.environ.get('LDAP_GROUP_KEY', 'cn')
 
         for i in self.search(
             os.environ['LDAP_BASE_DN'],
-            searchFilter = "({})".format(os.environ.get('LDAP_FILTER', "objectClass=groupOfMembers")),
-            retrieveAttributes = []): 
+            searchFilter="({})".format(
+                    os.environ.get(
+                        'LDAP_FILTER', "objectClass=groupOfMembers"
+                    )
+                ),
+            retrieveAttributes=[]):
 
             attributes = self.get_attributes(i[0][1])
 
@@ -185,7 +196,10 @@ class Ldap(object):
 
             attributes['member'] = members
 
-            self.groups[key] = { 'attributes': attributes }
+            self.groups[key] = {
+                'attributes': attributes
+            }
+
 
 class USER(object):
 
@@ -201,18 +215,28 @@ class USER(object):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { 'name': self.name, 'instance': self.instance() }
+        return {
+            'name': self.name,
+            'instance': self.instance()
+        }
 
     def instance(self):
         if self.irods_instance:
-            return { 'id': self.irods_instance.id, 'name': self.irods_instance.name, 'type': self.irods_instance.type, 'zone': self.irods_instance.zone, 'metadata': self.metadata() }
+            return {
+                'id': self.irods_instance.id,
+                'name': self.irods_instance.name,
+                'type': self.irods_instance.type,
+                'zone': self.irods_instance.zone,
+                'metadata': self.metadata()
+            }
         else:
             return {}
 
     def metadata(self):
         result = {}
 
-        if not self.irods_instance: return result
+        if not self.irods_instance:
+            return result
 
         for k in self.irods_instance.metadata.keys():
 
@@ -227,9 +251,10 @@ class USER(object):
         self.must_keep = True
         self.attributes = attributes
         return self
-    
+
     def sync(self):
-        if not self.irods_instance: return
+        if not self.irods_instance:
+            return
 
         if not self.must_keep:
             self.remove()
@@ -238,14 +263,23 @@ class USER(object):
                 self.irods_instance.metadata.remove_all()
 
             ssh("sudo useradd -m {}".format(self.name))
-            ssh("sudo su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(self.name))
-            try:
-                for k in self.attributes['sshPublicKey']:
-                    ssh("sudo su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(self.name, k))
+            ssh("sudo su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(
+                self.name
+                ))
 
-                ssh("sudo su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(self.name, k))
-            except:
-                pass
+            pubkeys = self.attributes.get('sshPublicKey', [])
+
+            for k in pubkeys:
+                ssh("sudo su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(
+                        self.name, k
+                    )
+                )
+
+            if len(pubkeys) > 0:
+                ssh("sudo su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(
+                        self.name
+                    )
+                )
 
             env = json.dumps({
                     "irods_host": "icat",
@@ -258,7 +292,10 @@ class USER(object):
                     "irods_ssl_verify_server": "none"
                 }, indent=4).replace('"', '\\""')
 
-            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/irods_environment.json"'.format(self.name, env))
+            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/irods_environment.json"'.format(
+                    self.name, env
+                    )
+                )
 
             env = f"""
             irodsHost icat
@@ -267,15 +304,19 @@ class USER(object):
             irodsZone {IRODS_ZONE}
             """
 
-            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/.irodsEnv"'.format(self.name, env))
+            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/.irodsEnv"'.format(
+                    self.name, env
+                    )
+                )
 
             if not DRY_RUN and self.attributes:
-                for k,v in self.attributes.items():
+                for k, v in self.attributes.items():
                     for i in v:
                         self.irods_instance.metadata.add(k, i)
 
     def remove(self):
-        if not self.irods_instance: return
+        if not self.irods_instance:
+            return
 
         logger.info("IRODS Remove User: {}".format(self.name))
         if not DRY_RUN:
@@ -285,6 +326,7 @@ class USER(object):
 
         self.must_keep = False
         self.irods_instance = None
+
 
 class GROUP(object):
 
@@ -305,18 +347,29 @@ class GROUP(object):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def json(self):
-        return { "name" : self.name, 'members': [ m for m in self.members.keys() ], 'instance': self.instance() }
+        return {
+            "name": self.name,
+            'members': [
+                m for m in self.members.keys()
+            ],
+            'instance': self.instance()
+        }
 
     def instance(self):
-        if self.irods_instance: 
-            return { 'id': self.irods_instance.id, 'name': self.irods_instance.name, 'metadata': self.metadata() }
+        if self.irods_instance:
+            return {
+                'id': self.irods_instance.id,
+                'name': self.irods_instance.name,
+                'metadata': self.metadata()
+            }
         else:
             return {}
 
     def metadata(self):
         result = {}
 
-        if not self.irods_instance: return result
+        if not self.irods_instance:
+            return result
 
         for k in self.irods_instance.metadata.keys():
 
@@ -338,18 +391,27 @@ class GROUP(object):
         return self
 
     def sync(self):
-        if not self.irods_instance: return
+        if not self.irods_instance:
+            return
 
         if not self.must_keep:
             self.remove()
         else:
             for m in self.members.keys():
                 if not self.members[m] and self.irods_instance.hasmember(m):
-                    logger.info("IRODS Remove {} from Group: {} ...".format(m, self.name))
+                    logger.info(
+                        "IRODS Remove {} from Group: {} ...".format(
+                            m, self.name
+                        )
+                    )
                     if not DRY_RUN:
                         self.irods_instance.removemember(m)
                 if self.members[m] and not self.irods_instance.hasmember(m):
-                    logger.info("IRODS Add {} to Group: {}...".format(m, self.name))
+                    logger.info(
+                        "IRODS Add {} to Group: {}...".format(
+                            m, self.name
+                        )
+                    )
                     if not DRY_RUN:
                         self.irods_instance.addmember(m)
 
@@ -357,16 +419,21 @@ class GROUP(object):
                 self.irods_instance.metadata.remove_all()
 
             if not DRY_RUN and self.attributes:
-                for k,v in self.attributes.items():
+                for k, v in self.attributes.items():
                     for i in v:
                         self.irods_instance.metadata.add(k, i)
 
     def remove(self):
-        if not self.irods_instance: return
+        if not self.irods_instance:
+            return
 
         for m in self.members:
             if self.irods_instance.hasmember(m):
-                logger.info("IRODS Remove {} from group: {}...".format(m, self.name))
+                logger.info(
+                    "IRODS Remove {} from group: {}...".format(
+                        m, self.name
+                    )
+                )
                 if not DRY_RUN:
                     self.irods_instance.removemember(m)
 
@@ -378,16 +445,26 @@ class GROUP(object):
         self.irods_instance = None
         self.members = []
 
+
 class iRODS(object):
-    
+
     def __init__(self):
         try:
-            self.session = iRODSSession(host=IRODS_HOST, port=IRODS_PORT, user=IRODS_USER, password=IRODS_PASS, zone=IRODS_ZONE)
+            self.session = iRODSSession(
+                host=IRODS_HOST,
+                port=IRODS_PORT,
+                user=IRODS_USER,
+                password=IRODS_PASS,
+                zone=IRODS_ZONE
+            )
         except Exception as e:
-            logger.error("Problem connecting to IRODS {} error: {}".format(os.environ['IRODS_HOST'], str(e)))
+            logger.error(
+                "Problem connecting to IRODS {} error: {}".
+                format(os.environ['IRODS_HOST'], str(e))
+            )
             exit(1)
 
-        self.users = {}    
+        self.users = {}
         self.groups = {}
 
         self.get_users()
@@ -398,31 +475,33 @@ class iRODS(object):
         self.session = None
 
     def json(self):
-        return { 
-            'users': [ u.json() for _, u in self.users.items() ],
-            'groups': [ g.json() for _, g in self.groups.items() ] 
+        return {
+            'users': [u.json() for _, u in self.users.items()],
+            'groups': [g.json() for _, g in self.groups.items()]
         }
 
     def __repr__(self):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
     def add_user(self, name, instance=None):
-        if name in self.users: return
+        if name in self.users:
+            return
 
         if not instance and not DRY_RUN:
             logger.info("IRODS Create User: {}".format(name))
             instance = self.session.users.create(name, 'rodsuser')
-    
+
         self.users[name] = USER(name, instance)
 
     def add_group(self, name, instance=None):
-        if name in self.groups: return
+        if name in self.groups:
+            return
 
         if not instance and not DRY_RUN:
             logger.info("IRODS Create Group: {}".format(name))
             if not instance and not DRY_RUN:
                 instance = self.session.user_groups.create(name)
-    
+
         self.groups[name] = GROUP(name, instance)
 
     def get_users(self):
@@ -438,7 +517,7 @@ class iRODS(object):
 
         return self
 
-    def get_groups(self):        
+    def get_groups(self):
         query = self.session.query(User.name, User.id, User.type).filter(
                 Criterion('=', User.type, 'rodsgroup'))
 
@@ -448,7 +527,7 @@ class iRODS(object):
                 continue
 
             self.add_group(name, instance=self.session.user_groups.get(name))
-        
+
         logger.debug("iRODS Groups: {}".format(self))
 
         return self
@@ -462,6 +541,7 @@ class iRODS(object):
         for _, g in self.groups.items():
             g.sync()
 
+
 def run():
 
     start_time = datetime.now()
@@ -472,7 +552,7 @@ def run():
 
     # Read iRODS...
     my_irods = iRODS()
-    
+
     # process iRODS people...
     for u in my_ldap.people.keys():
         if u not in my_irods.users:
@@ -490,10 +570,11 @@ def run():
         for m in my_ldap.groups[g]['attributes']['member']:
             my_irods.groups[g].member(m)
 
-    # Write changes to iRODS 
+    # Write changes to iRODS
     my_irods.sync()
 
     logger.info("SYNC completed at: {}".format(start_time))
+
 
 if __name__ == "__main__":
     run()
