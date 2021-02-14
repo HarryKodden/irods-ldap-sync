@@ -472,6 +472,7 @@ class iRODS(object):
 
     def __exit__(self):
         self.session.cleanup()
+        self.session.release(True)
         self.session = None
 
     def json(self):
