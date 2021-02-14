@@ -73,4 +73,8 @@ jobs:
     #  uses: mxschmitt/action-tmate@v3
 
     - name: Run pytest...
-      run: pytest
+      run: |
+        cat .env;
+        pytest;
+      env:
+        LOG_LEVEL: DEBUG
