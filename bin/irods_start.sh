@@ -26,8 +26,8 @@ docker run \
   --entrypoint /opt/icommands-start.sh \
   --env IRODS_HOST=icat \
   --env IRODS_PORT=${IRDDS_PORT:-1247} \
-  --env IRODS_USER=${IRODS_USER} \
-  --env IRODS_ZONE=${IRODS_ZONE} \
+  --env IRODS_USER=${IRODS_USER:-rods} \
+  --env IRODS_ZONE=${IRODS_ZONE:-tempZone} \
   -v $(pwd)/bin/icommands-start.sh:/opt/icommands-start.sh \
   -v ~/.ssh/id_rsa.pub:/tmp/authorized_keys \
   irods/icommands:$VER
