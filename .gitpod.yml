@@ -11,4 +11,3 @@ tasks:
   - init: |
       python -m pip install -r requirements.txt;
       sudo docker-up;
-git 
