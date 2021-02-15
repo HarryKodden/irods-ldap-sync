@@ -1,6 +1,10 @@
 #!/bin/bash
 
-source .env
+if test -f ".env"; then
+  source .env
+else
+  source .test.env
+fi
 
 bin/irods_stop.sh 2>&1 >/dev/null
 
