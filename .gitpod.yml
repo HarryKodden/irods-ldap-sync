@@ -1,7 +1,7 @@
 image:
   file: .gitpod.Dockerfile
 
-# List the ports you want to expose and what to do when they are served. See https://www.gitpod.io/docs/config-ports/
+    # List the ports you want to expose and what to do when they are served. See https://www.gitpod.io/docs/config-ports/
 ports:
   - port: 3000
     onOpen: open-preview
@@ -11,3 +11,7 @@ tasks:
   - init: |
       python -m pip install -r requirements.txt;
       sudo docker-up;
+
+vscode:
+  extensions:
+    - littlefoxteam.vscode-python-test-adapter@0.3.16:tZ/6xOSSdKUaq6JCUVkD+A==
