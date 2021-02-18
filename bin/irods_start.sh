@@ -1,6 +1,10 @@
 #!/bin/bash
 
-source .env
+if test -f ".env"; then
+  source .env
+else
+  source .test.env
+fi
 
 bin/irods_stop.sh 2>&1 >/dev/null
 
@@ -8,7 +12,6 @@ bin/irods_stop.sh 2>&1 >/dev/null
 
 VER="4.0.3"
 CWD=$(printf "%q" "${PWD}")
-
 
 docker run \
   --name my-irods-icat \
@@ -28,9 +31,9 @@ echo docker run \
   --entrypoint /opt/icommands-start.sh \
   --env IRODS_HOST=icat \
   --env IRODS_PORT=${IRDDS_PORT:-1247} \
-  --env IRODS_USER=${IRODS_USER} \
-  --env IRODS_ZONE=${IRODS_ZONE} \
-  -v ${CWD}/bin/icommands-start.sh:/opt/icommands-start.sh \
+  --env IRODS_USER=${IRODS_USER:-rods} \
+  --env IRODS_ZONE=${IRODS_ZONE:-tempZone} \
+  -v $(pwd)/bin/icommands-start.sh:/opt/icommands-start.sh \
   -v ~/.ssh/id_rsa.pub:/tmp/authorized_keys \
   irods/icommands:${VER}
 

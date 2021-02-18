@@ -81,7 +81,7 @@ class Ldap(object):
         self.get_people()
         self.get_groups()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.session.unbind_s()
 
     def __repr__(self):
@@ -143,7 +143,7 @@ class Ldap(object):
             attributes = self.get_attributes(i[0][1])
 
             if ldap_user_key not in attributes:
-                logger.error("Missing '{}' attribute in LDAP USER Object !", ldap_user_key)
+                logger.error("Missing '{}' attribute in LDAP USER Object !".format(ldap_user_key))
                 continue
 
             if len(attributes[ldap_user_key]) > 1:
@@ -470,9 +470,8 @@ class iRODS(object):
         self.get_users()
         self.get_groups()
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.session.cleanup()
-        self.session.release(True)
         self.session = None
 
     def json(self):

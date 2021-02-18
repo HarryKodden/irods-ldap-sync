@@ -43,7 +43,7 @@ jobs:
         IRODS_ZONE: tempZone
         SSH_HOST: localhost
         SSH_PORT: 2222
-        LDAP_HOST: ldap://localhost:389
+        LDAP_HOST: ldap://localhost:1389
         LDAP_ADMIN_PASSWORD: secret
         LDAP_CONFIG_PASSWORD: config
         LDAP_BASE_DN: dc=example,dc=org
