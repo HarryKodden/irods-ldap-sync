@@ -22,7 +22,7 @@ docker run \
 
 icat=$(docker inspect my-irods-icat | grep IPAddress | grep -v null | cut -d '"' -f 4 | head -1)
 
-echo docker run \
+docker run \
   --name my-irods-icommands \
   --rm \
   --detach \
