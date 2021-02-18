@@ -1,6 +1,10 @@
 #!/bin/bash
 
-source .env
+if test -f ".env"; then
+  source .env
+else
+  source .test.env
+fi
 
 bin/ldap_stop.sh 2>&1 >/dev/null
 
@@ -12,7 +16,7 @@ docker run \
   --env LDAP_ADMIN_PASSWORD="${LDAP_ADMIN_PASSWORD:-changeme}" \
   --env LDAP_CONFIG_PASSWORD="${LDAP_CONFIG_PASSWORD:-changeme}" \
   --env LDAP_TLS=true \
-  --publish 389:389 \
+  --publish 1389:389 \
   --rm \
   --detach \
   osixia/openldap:latest --loglevel debug --copy-service

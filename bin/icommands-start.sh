@@ -1,6 +1,13 @@
 #!/bin/bash
 
+IRODS_HOST=${IRODS_HOST:-localhost}
+IRODS_PORT=${IRODS_PORT:-1247}
+IRODS_ZONE=${IRODS_ZONE:-tempZone}
+IRODS_USER=${IRODS_USER:-rods}
+IRODS_PASS=${IRODS_PASS:-password}
+
 echo "Running..."
+set
 apt-get update -y
 apt-get install -y openssh-server
 mkdir /var/run/sshd

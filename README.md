@@ -1,3 +1,5 @@
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/HarryKodden/irods-ldap-sync)
+
 ![example workflow name](https://github.com/HarryKodden/irods-ldap-sync/workflows/CI/badge.svg)
 
 # irods-ldap-sync
@@ -41,10 +43,6 @@ For a single pass execution you can either execute:
 ```
 pytest
 ```
-or
-```
-dotenv run python src/sync.py 
-```
 
 ## Configuration
 
@@ -61,7 +59,7 @@ LDAP_BIND_DN|"cn=admin,dc=example,dc=org"|LDAP Bind DN
 IRODS_HOST|localhost|The iRODS host to connect to
 IRDDS_PORT|1247|The iRODS service port to connect to
 IRODS_USER|rods|iRODS administrator user
-IRODS_PASS|password|iRODS administrator user
+IRODS_PASS|password|iRODS administrator password
 IRODS_ZONE|tempZone|The iRODS zone
 LOG_LEVEL|INFO|Loglevel can be **NONE**, **DEBUG**, **INFO**, **WARN**, **ERROR**
 DRY_RUN|False|Either **True** or **False**, when True No updates are performed to iRODS.
