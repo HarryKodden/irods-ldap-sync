@@ -8,6 +8,7 @@ ports:
 
 # List the start up tasks. You can start them in parallel in multiple terminals. See https://www.gitpod.io/docs/config-start-tasks/
 tasks:
+  
   - init: |
       mkdir -p .vscode;
       cat << EOF > .vscode/settings.json
@@ -22,7 +23,8 @@ tasks:
       }
       EOF
       python -m pip install -r requirements.txt;
-      sudo docker-up;
+
+  - command: sudo docker-up;
 
 vscode:
   extensions:
