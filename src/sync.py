@@ -5,6 +5,7 @@ import os
 import ldap
 import json
 import logging
+import ssl
 
 from datetime import datetime
 
@@ -450,6 +451,16 @@ class iRODS(object):
 
     def __init__(self):
         try:
+            try:
+                env_file = os.environ['IRODS_ENVIRONMENT_FILE']
+            except KeyError as ke:
+                logger.error("Problem finding env var IRODS_ENVIRONMENT_FILE, error: {}".format(str(ke)))
+                env_file = os.path.expanduser('~/.irods/irods_environment.json')
+            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
+            ssl_settings = {'ssl_context': ssl_context}
+            self.session = iRODSSession(irods_env_file=env_file, **ssl_settings)
+        except Exception as e:
+            logger.error("Problem loading ~/.irods/irods_environment.json, error: {}".format(str(e)))
             self.session = iRODSSession(
                 host=IRODS_HOST,
                 port=IRODS_PORT,
