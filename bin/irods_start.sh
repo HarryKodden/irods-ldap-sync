@@ -11,7 +11,6 @@ bin/irods_stop.sh 2>&1 >/dev/null
 # Start iRODS server
 
 VER="4.0.3"
-CWD=$(printf "%q" "${PWD}")
 
 docker run \
   --name my-irods-icat \

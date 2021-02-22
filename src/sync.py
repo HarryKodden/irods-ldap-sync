@@ -26,6 +26,8 @@ IRODS_PORT = os.environ.get('IRODS_PORT', 1247)
 IRODS_USER = os.environ.get('IRODS_USER', '')
 IRODS_PASS = os.environ.get('IRODS_PASS', '')
 
+DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
+
 SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
 SSH_PORT = os.environ.get('SSH_PORT', 2222)
 SSH_USER = os.environ.get('SSH_USER', 'root')
@@ -293,8 +295,8 @@ class USER(object):
                     "irods_ssl_verify_server": "none"
                 }, indent=4).replace('"', '\\""')
 
-            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/irods_environment.json"'.format(
-                    self.name, env
+            ssh('sudo su - {} -c "echo -e \'{}\' > {}"'.format(
+                    self.name, env, DEFAULT_IRODS_ENVIRONMENT_FILE
                     )
                 )
 
@@ -451,16 +453,16 @@ class iRODS(object):
 
     def __init__(self):
         try:
-            try:
-                env_file = os.environ['IRODS_ENVIRONMENT_FILE']
-            except KeyError as ke:
-                logger.error("Problem finding env var IRODS_ENVIRONMENT_FILE, error: {}".format(str(ke)))
-                env_file = os.path.expanduser('~/.irods/irods_environment.json')
+            env_file = os.environ.get('IRODS_ENVIRONMENT_FILE', DEFAULT_IRODS_ENVIRONMENT_FILE)
+            logger.info("Trying: {}".format(env_file))
+
+            #   env_file = os.path.expanduser('~/.irods/irods_environment.json')
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
             ssl_settings = {'ssl_context': ssl_context}
             self.session = iRODSSession(irods_env_file=env_file, **ssl_settings)
         except Exception as e:
-            logger.error("Problem loading ~/.irods/irods_environment.json, error: {}".format(str(e)))
+            logger.info("Not using environment, using host connect instead")
+
             self.session = iRODSSession(
                 host=IRODS_HOST,
                 port=IRODS_PORT,
@@ -547,10 +549,17 @@ class iRODS(object):
         logger.debug("Syncing...")
 
         for _, u in self.users.items():
-            u.sync()
+
+            try:
+                u.sync()
+            except Exception as e:
+                logger.error("Exception during sync user: {}".format(u.name))
 
         for _, g in self.groups.items():
-            g.sync()
+            try:
+                g.sync()
+            except Exception as e:
+                logger.error("Exception during sync group: {}".format(g.name))
 
 
 def run():
