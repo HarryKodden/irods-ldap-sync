@@ -83,6 +83,7 @@ jobs:
       run: coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_SERVICE_NAME: github
         COVERALLS_PARALLEL: true
 
   coveralls:
@@ -97,3 +98,4 @@ jobs:
         coveralls --finish
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_SERVICE_NAME: github
