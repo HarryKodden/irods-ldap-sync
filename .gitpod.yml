@@ -25,7 +25,11 @@ tasks:
       python -m pip install -r requirements.txt;
 
   - command: sudo docker-up;
-
+  - command: |
+      sleep 5;
+      bin/ldap_start.sh;
+      bin/irods_start.sh;
+      
 vscode:
   extensions:
     - littlefoxteam.vscode-python-test-adapter
