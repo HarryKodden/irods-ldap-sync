@@ -29,6 +29,7 @@ tasks:
       sleep 5;
       bin/ldap_start.sh;
       bin/irods_start.sh;
+      exit;
       
 vscode:
   extensions:
