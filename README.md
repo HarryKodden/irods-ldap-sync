@@ -2,7 +2,7 @@
 
 ![example workflow name](https://github.com/HarryKodden/irods-ldap-sync/workflows/CI/badge.svg)
 
-[![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main&kill_cache=1)
+[![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main&kill_cache=1)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main)
 
 
 # irods-ldap-sync
