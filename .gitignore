@@ -1,4 +1,6 @@
 .env
 .venv
 .vscode/*
+.coverage
+.coveralls.yml
 __pycache__

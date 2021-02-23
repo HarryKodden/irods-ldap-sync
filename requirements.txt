@@ -5,3 +5,5 @@ pytest
 pytest-dotenv
 python-ldap
 python-irodsclient
+pytest-cov
+coveralls
