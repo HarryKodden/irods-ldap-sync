@@ -2,6 +2,8 @@
 
 ![example workflow name](https://github.com/HarryKodden/irods-ldap-sync/workflows/CI/badge.svg)
 
+[![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main)
+
 # irods-ldap-sync
 
 This repository demonstrates the synchronization of LDAP object into iRODS cataloque.
@@ -21,6 +23,7 @@ Please look in the **.github/workflows/ci.yml** for configuration details
 You have multiple run options:
 1. Run locally with LDAP and iRODS docker containers.
 2. Connect to existing LDAP and/or iRODS instances
+
 ### Run on localhost
 
 Running on localhost: (docker is required !)
@@ -33,12 +36,17 @@ Running on localhost: (docker is required !)
 ./etc/irods_start.sh
 ```
 
+## Gitpod
+
+This repository is fully prepared to operate on GitPod. You can launch the workspace on GitPod. During initialization of the workspace, docker is prepared as well. Both LDAP and iRODS containers are instantiated.
+When workspace is opened, you may directly execute command 'pytest' to see that everythings works as expected.
+
 ### Connect to existing LDAP / iRODS
 
 For connecting to existing instances, make sure you have administrator credentials and provide the credential in the **.env** file (see below)
 
 ### Execute !
-For a single pass execution you can either execute:
+For a single pass execution you can execute:
 
 ```
 pytest
