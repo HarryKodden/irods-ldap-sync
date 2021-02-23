@@ -1,10 +1,47 @@
 import os
 import logging
-from src.sync import run, Ldap, iRODS, ssh
+from src.sync import DRY_RUN, run, Ldap, iRODS, ssh
 
 from tests.base_test import BaseTest
 
 logger = logging.getLogger(__name__)
+
+class MutableLdap(Ldap):
+
+    def delete(self, objectClass, target):
+        filter = f"(&(ObjectClass={objectClass})({target}))"
+
+        result = self.search(os.environ['LDAP_BASE_DN'], searchFilter=filter
+        )
+
+        assert(len(result) == 1)
+        entries = result[0]
+
+        assert(len(entries) == 1)
+        rdn, _ = entries[0]
+
+        logger.info(rdn)
+        assert(rdn.startswith(target))
+        
+        self.session.delete(rdn)
+
+    def delete_person(self, name):
+        logger.info("DELETE PERSON: {}".format(name))
+
+        self.delete("inetOrgPerson", "{}={}".format(
+                os.environ.get('LDAP_USER_KEY', 'uid'), name
+            )
+        )
+        
+
+    def delete_group(self, name):
+        logger.info("DELETE GROUP: {}".format(name))
+    
+        self.delete("groupOfMembers", "{}={}".format(
+                os.environ.get('LDAP_GROUP_KEY', 'cn'), name
+            )
+        )
+
 
 class TestAll(BaseTest):
 
@@ -12,7 +49,12 @@ class TestAll(BaseTest):
         my_ldap = Ldap()
         logger.info(my_ldap)
 
+    def test_02_sync_ldap_to_irods_dry_run(self):
+        DRY_RUN = True
+        run()
+        
     def test_02_sync_ldap_to_irods(self):
+        DRY_RUN = False
         run()
 
     def test_03_irods_content(self):
@@ -28,3 +70,13 @@ class TestAll(BaseTest):
 
     def test_06_irods_iadmin_list_groups(self):
         ssh("iadmin lg")
+
+    def test_07_irods_sync_after_ldap_updates(self):
+        my_ldap = MutableLdap()
+        
+        my_ldap.delete_group("ai_res")
+        my_ldap.delete_person("jdoe")
+
+        DRY_RUN = False
+        run()
+        
