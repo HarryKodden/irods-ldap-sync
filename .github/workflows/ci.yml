@@ -19,7 +19,7 @@ jobs:
     - name: Convert markdown documents... 
       uses: docker://pandoc/latex:2.9
       with:
-          args: --output=result.pdf doc/*.md
+          args: --output=result.pdf /github/workspace/doc/*.md
     
     - name: Store result in repository
       uses: actions/upload-artifact@master
