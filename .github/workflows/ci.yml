@@ -24,8 +24,8 @@ jobs:
     - name: Store result in repository
       uses: actions/upload-artifact@master
       with:
-          name: doc
-          path: doc
+          name: policy
+          path: doc/
 
     - name: Install system dependencies
       run: sudo apt-get update && sudo apt-get install -y libsasl2-dev libldap2-dev ldap-utils
