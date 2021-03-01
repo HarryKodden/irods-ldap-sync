@@ -4,3 +4,4 @@
 .coverage
 .coveralls.yml
 __pycache__
+sync_policies.pdf

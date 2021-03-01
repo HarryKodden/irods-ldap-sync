@@ -11,8 +11,7 @@ class MutableLdap(Ldap):
     def delete(self, objectClass, target):
         filter = f"(&(ObjectClass={objectClass})({target}))"
 
-        result = self.search(os.environ['LDAP_BASE_DN'], searchFilter=filter
-        )
+        result = self.search(os.environ['LDAP_BASE_DN'], searchFilter=filter)
 
         assert(len(result) == 1)
         entries = result[0]
@@ -52,7 +51,7 @@ class TestAll(BaseTest):
     def test_02_sync_ldap_to_irods_dry_run(self):
         DRY_RUN = True
         run()
-        
+
     def test_02_sync_ldap_to_irods(self):
         DRY_RUN = False
         run()
