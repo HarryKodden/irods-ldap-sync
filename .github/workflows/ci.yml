@@ -16,15 +16,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Prepare documentation
-      run: |
-          cd doc;
-          echo "::set-env name=FILELIST::$(printf '"%s" ' *.md)"
-    
     - name: Convert markdown documents... 
       uses: docker://pandoc/latex:2.9
       with:
-          args: --output=result.pdf ${{ env.FILELIST }}
+          args: --output=result.pdf doc/*.md
     
     - name: Store result in repository
       uses: actions/upload-artifact@master
