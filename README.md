@@ -4,6 +4,7 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main&kill_cache=1)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main)
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/HarryKodden/irods-ldap-sync/HEAD)
 
 # irods-ldap-sync
 
