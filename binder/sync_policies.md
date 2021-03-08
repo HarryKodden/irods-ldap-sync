@@ -1,5 +1,6 @@
 # sync process
 
+
 ## Read LDAP - People
 
 ```
@@ -53,6 +54,37 @@ Make sure there is always 'ownership' of at least 1 owner of the iRODS group, ev
 member of that group is deleted.
 ```
 
+What If - About to delete iRODS user and the user has no data?
+
+        Happens when:
+
+            the user is not in LDAP anymore.
+            the user is in iRODS.
+            the user has no data.
+            during sync, the process is about to remove the iRODS user.
+
+        Proposal:
+
+            the user is removed
+
+        What If - About to delete iRODS user and the user has data?
+
+        Happens when:
+
+            the user is not in LDAP anymore.
+            the user is in iRODS.
+            the user has data.
+            during sync, the process is about to remove the iRODS user.
+
+        Proposal:
+
+            iRODS admin is notified (actively or passively).
+            iRODS admin contacts the user and asks her to remove the data.
+            if the user does not comply within the grace period, the data are moved to a different collection under the ownership of the iRODS admin group
+            Once the data has been (re)moved, we are back to the scenario with no data.
+    The objective: "Make sure that all data in iRODS is owned by a iRODS Group (not on individual iRODS users !)" seems a best practice, but I do not think we should impose them to the users, only advise them.
+    The objective: "Make sure that existing iRODS groups are not deleted based on the removal of LDAP group" makes me wonder under which conditions an iRODS group is deleted? While I understand that you do not want to remove a group as soon as it is empty, I do not think that it makes sense to keep it forever also. It seems reasonable to me to define a default expiration time for empty groups, for example six months. If the group has data, we could apply the same procedure proposed for a user with data.
+    
 ## What If - About to delete last iRODS group member?
 
 ```
@@ -123,3 +155,14 @@ Proposal:
 Add regular LDAP member as member of this iRODS group
 Remove irods administrator as member of this iRODS group
 ```
+
+
+####
+
+my comments:
+
+    I would use an iRODS group which has the admins as members instead of the iRODS admin user whenever in the policy it is required to give ownership to the iRODS admin.
+    The paragraph titled "### What If - About to create iRODS group - with LDAP members" has a content that does not seem to reflect the title in the MD file, but it is correct in the PDF file.
+    I think we need paragraphs for user removal:
+        
+
