@@ -25,17 +25,23 @@ class MutableLdap(Ldap):
         self.session.delete(rdn)
 
     def add(self, dn, attrs):
-        ldif = self.session.modlist.addModlist(attrs)
+        from ldap import modlist
+
+        logger.info(dn)
+        ldif = modlist.addModlist(attrs)
+        logger.info(ldif)
         self.session.add_s(dn,ldif)
 
     def add_person(self, name):
         logger.info("ADD PERSON: {}".format(name))
 
         self.add(
-            f"{os.environ.get('LDAP_USER_KEY', 'uid')}={name},ou=People,{os.environ['LDAP_BASE_DN']}",
+            f"{os.environ.get('LDAP_USER_KEY', 'uid')}={name},{os.environ['LDAP_BASE_DN']}",
             {
-                'objectclass': ['top','inetOrgPerson'],
-                f"{os.environ.get('LDAP_USER_KEY', 'uid')}": name
+                'objectclass': [b'top',b'inetOrgPerson'],
+                f"{os.environ.get('LDAP_USER_KEY', 'uid')}": [name.encode()],
+                'sn': [b'n/a'],
+                'cn': [b'n/a']
             }
         )
 
@@ -43,10 +49,10 @@ class MutableLdap(Ldap):
         logger.info("ADD GROUP: {}".format(name))
 
         self.add(
-            f"{os.environ.get('LDAP_GROUP_KEY', 'cn')}={name},ou=Group,{os.environ['LDAP_BASE_DN']}",
+            f"{os.environ.get('LDAP_GROUP_KEY', 'cn')}={name},{os.environ['LDAP_BASE_DN']}",
             {
-                'objectclass': ['top','groupOfMembers'],
-                f"{os.environ.get('LDAP_GROUP_KEY', 'cn')}": name
+                'objectclass': [b'top',b'groupOfMembers'],
+                f"{os.environ.get('LDAP_GROUP_KEY', 'cn')}": [name.encode()]
             }
         )
 
@@ -100,7 +106,13 @@ class TestAll(BaseTest):
         
         DRY_RUN = False
 
-        my_ldap.add_person("test_user")
+        u = "test_user"
+        try:
+            my_ldap.delete_person(u)
+        except Exception:
+            pass
+
+        my_ldap.add_person(u)
         run()
         my_irods = iRODS()
         
@@ -109,7 +121,14 @@ class TestAll(BaseTest):
         
         DRY_RUN = False
 
-        my_ldap.add_group("test_group")
+        g = "test_group"
+
+        try:
+            my_ldap.delete_group(g)
+        except Exception:
+            pass
+
+        my_ldap.add_group(g)
         run()
         my_irods = iRODS()
         
@@ -118,7 +137,14 @@ class TestAll(BaseTest):
         
         DRY_RUN = False
 
-        my_ldap.delete_person("test_user")
+        u = "test_user"
+
+        try:
+            my_ldap.add_person(u)
+        except Exception:
+            pass
+
+        my_ldap.delete_person(u)
         run()
         my_irods = iRODS()
         
@@ -127,6 +153,11 @@ class TestAll(BaseTest):
         
         DRY_RUN = False
 
-        my_ldap.delete_group("test_group")
+        g = "test_group"
+        try:
+            my_ldap.add_group(g)
+        except Exception:
+            pass
+        my_ldap.delete_group(g)
         run()
         my_irods = iRODS()
