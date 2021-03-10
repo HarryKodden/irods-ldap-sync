@@ -24,8 +24,10 @@ tasks:
       EOF
       python -m pip install -r requirements.txt;
 
-  - command: sudo docker-up;
-  - command: |
+  - name: docker
+    command: sudo docker-up;
+  - name: services
+    command: |
       sleep 5;
       bin/ldap_start.sh;
       bin/irods_start.sh;

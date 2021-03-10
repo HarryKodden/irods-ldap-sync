@@ -118,7 +118,7 @@ class Ldap(object):
 
             result = result_set
 
-        except ldap.LDAPError as e:
+        except ldap.LDAPError:
             result = None
             logger.error("[IRODS] REQUEST: %s\n" % str(e))
 
@@ -134,16 +134,6 @@ class Ldap(object):
                 attributes[a].append(v.decode())
 
         return attributes
-
-    def add_user(self, name, attributes=None):
-        self.people[name] = {
-                'attributes': attributes
-            }
-
-    def add_group(self, name, attributes=None):
-        self.groups[name] = {
-                'attributes': attributes
-            }
 
     def get_people(self):
         ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
@@ -165,7 +155,9 @@ class Ldap(object):
 
             key = attributes[ldap_user_key][0]
 
-            self.add_user(key, attributes)
+            self.people[key] = {
+                'attributes': attributes
+            }
 
     def get_groups(self):
         ldap_group_key = os.environ.get('LDAP_GROUP_KEY', 'cn')
@@ -207,7 +199,9 @@ class Ldap(object):
 
             attributes['member'] = members
 
-            self.add_group(key, attributes)
+            self.groups[key] = {
+                'attributes': attributes
+            }
 
 class USER(object):
 
@@ -565,7 +559,7 @@ class iRODS(object):
         for _, u in self.users.items():
             try:
                 u.sync(secure_user_assets)
-            except Exception as e:
+            except Exception:
                 logger.error("Exception during sync user: {}".format(u.name))
 
         for _, g in self.groups.items():

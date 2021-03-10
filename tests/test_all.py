@@ -24,14 +24,39 @@ class MutableLdap(Ldap):
         
         self.session.delete(rdn)
 
+    def add(self, dn, attrs):
+        ldif = self.session.modlist.addModlist(attrs)
+        self.session.add_s(dn,ldif)
+
+    def add_person(self, name):
+        logger.info("ADD PERSON: {}".format(name))
+
+        self.add(
+            f"{os.environ.get('LDAP_USER_KEY', 'uid')}={name},ou=People,{os.environ['LDAP_BASE_DN']}",
+            {
+                'objectclass': ['top','inetOrgPerson'],
+                f"{os.environ.get('LDAP_USER_KEY', 'uid')}": name
+            }
+        )
+
+    def add_group(self, name):
+        logger.info("ADD GROUP: {}".format(name))
+
+        self.add(
+            f"{os.environ.get('LDAP_GROUP_KEY', 'cn')}={name},ou=Group,{os.environ['LDAP_BASE_DN']}",
+            {
+                'objectclass': ['top','groupOfMembers'],
+                f"{os.environ.get('LDAP_GROUP_KEY', 'cn')}": name
+            }
+        )
+
     def delete_person(self, name):
         logger.info("DELETE PERSON: {}".format(name))
 
         self.delete("inetOrgPerson", "{}={}".format(
                 os.environ.get('LDAP_USER_KEY', 'uid'), name
             )
-        )
-        
+        )        
 
     def delete_group(self, name):
         logger.info("DELETE GROUP: {}".format(name))
@@ -70,16 +95,38 @@ class TestAll(BaseTest):
     def test_06_irods_iadmin_list_groups(self):
         ssh("iadmin lg")
 
-    def test_07_irods_sync_after_ldap_updates(self):
+    def test_07_irods_sync_after_ldap_add_person(self):
         my_ldap = MutableLdap()
         
         DRY_RUN = False
 
-        my_ldap.add_user("test7", {})
+        my_ldap.add_person("test_user")
         run()
         my_irods = iRODS()
-        logger.info(my_irods)
-
-        #my_ldap.delete_person("test7")
-        #run()
         
+    def test_08_irods_sync_after_add_group(self):
+        my_ldap = MutableLdap()
+        
+        DRY_RUN = False
+
+        my_ldap.add_group("test_group")
+        run()
+        my_irods = iRODS()
+        
+    def test_09_irods_sync_after_ldap_delete_person(self):
+        my_ldap = MutableLdap()
+        
+        DRY_RUN = False
+
+        my_ldap.delete_person("test_user")
+        run()
+        my_irods = iRODS()
+        
+    def test_10_irods_sync_after_delete_group(self):
+        my_ldap = MutableLdap()
+        
+        DRY_RUN = False
+
+        my_ldap.delete_group("test_group")
+        run()
+        my_irods = iRODS()
