@@ -73,9 +73,13 @@ class TestAll(BaseTest):
     def test_07_irods_sync_after_ldap_updates(self):
         my_ldap = MutableLdap()
         
-        my_ldap.delete_group("ai_res")
-        my_ldap.delete_person("jdoe")
-
         DRY_RUN = False
+
+        my_ldap.add_user("test7", {})
         run()
+        my_irods = iRODS()
+        logger.info(my_irods)
+
+        #my_ldap.delete_person("test7")
+        #run()
         

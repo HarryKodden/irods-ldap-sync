@@ -135,6 +135,16 @@ class Ldap(object):
 
         return attributes
 
+    def add_user(self, name, attributes=None):
+        self.people[name] = {
+                'attributes': attributes
+            }
+
+    def add_group(self, name, attributes=None):
+        self.groups[name] = {
+                'attributes': attributes
+            }
+
     def get_people(self):
         ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
 
@@ -155,9 +165,7 @@ class Ldap(object):
 
             key = attributes[ldap_user_key][0]
 
-            self.people[key] = {
-                'attributes': attributes
-            }
+            self.add_user(key, attributes)
 
     def get_groups(self):
         ldap_group_key = os.environ.get('LDAP_GROUP_KEY', 'cn')
@@ -199,10 +207,7 @@ class Ldap(object):
 
             attributes['member'] = members
 
-            self.groups[key] = {
-                'attributes': attributes
-            }
-
+            self.add_group(key, attributes)
 
 class USER(object):
 
@@ -255,12 +260,23 @@ class USER(object):
         self.attributes = attributes
         return self
 
-    def sync(self):
+    def sync(self, secure_assets_on_delete):
+
         if not self.irods_instance:
             return
 
         if not self.must_keep:
-            self.remove()
+            logger.info("IRODS Remove User: {}".format(self.name))
+
+            if not DRY_RUN:
+                secure_assets_on_delete(self.name)
+                self.irods_instance.remove()
+
+            ssh("sudo userdel -r {}".format(self.name))
+
+            self.must_keep = False
+            self.irods_instance = None
+
         else:
             if not DRY_RUN:
                 self.irods_instance.metadata.remove_all()
@@ -316,19 +332,6 @@ class USER(object):
                 for k, v in self.attributes.items():
                     for i in v:
                         self.irods_instance.metadata.add(k, i)
-
-    def remove(self):
-        if not self.irods_instance:
-            return
-
-        logger.info("IRODS Remove User: {}".format(self.name))
-        if not DRY_RUN:
-            self.irods_instance.remove()
-
-        ssh("sudo userdel -r {}".format(self.name))
-
-        self.must_keep = False
-        self.irods_instance = None
 
 
 class GROUP(object):
@@ -393,13 +396,33 @@ class GROUP(object):
         self.members[member] = True
         return self
 
-    def sync(self):
+    def sync(self, secure_assets_on_delete):
+
         if not self.irods_instance:
             return
 
         if not self.must_keep:
-            self.remove()
+
+            for m in self.members:
+                if self.irods_instance.hasmember(m):
+                    logger.info(
+                        "IRODS Remove {} from group: {}...".format(
+                            m, self.name
+                        )
+                    )
+                    if not DRY_RUN:
+                        self.irods_instance.removemember(m)
+
+            logger.info("IRODS Remove Group: {}".format(self.name))
+            if not DRY_RUN:
+                secure_assets_on_delete(self.name)
+                self.irods_instance.remove()
+
+            self.irods_instance = None
+            self.members = []
+
         else:
+
             for m in self.members.keys():
                 if not self.members[m] and self.irods_instance.hasmember(m):
                     logger.info(
@@ -425,28 +448,6 @@ class GROUP(object):
                 for k, v in self.attributes.items():
                     for i in v:
                         self.irods_instance.metadata.add(k, i)
-
-    def remove(self):
-        if not self.irods_instance:
-            return
-
-        for m in self.members:
-            if self.irods_instance.hasmember(m):
-                logger.info(
-                    "IRODS Remove {} from group: {}...".format(
-                        m, self.name
-                    )
-                )
-                if not DRY_RUN:
-                    self.irods_instance.removemember(m)
-
-        logger.info("IRODS Remove Group: {}".format(self.name))
-        if not DRY_RUN:
-            self.irods_instance.remove()
-
-        self.must_keep = False
-        self.irods_instance = None
-        self.members = []
 
 
 class iRODS(object):
@@ -524,6 +525,9 @@ class iRODS(object):
         for result in query:
             name = result[User.name]
 
+            if name.startswith('_'):
+                continue
+
             self.add_user(name, instance=self.session.users.get(name))
 
         logger.debug("iRODS Users: {}".format(self))
@@ -539,6 +543,9 @@ class iRODS(object):
             if name in ['rodsadmin', 'public']:
                 continue
 
+            if name.startswith('_'):
+                continue
+
             self.add_group(name, instance=self.session.user_groups.get(name))
 
         logger.debug("iRODS Groups: {}".format(self))
@@ -546,18 +553,24 @@ class iRODS(object):
         return self
 
     def sync(self):
+
         logger.debug("Syncing...")
 
-        for _, u in self.users.items():
+        def secure_user_assets(name):
+            logger.info("*** SECURE USER DATA: {}".format(name))
 
+        def secure_group_assets(name):
+            logger.info("*** SECURE GROUP DATA: {}".format(name))
+
+        for _, u in self.users.items():
             try:
-                u.sync()
+                u.sync(secure_user_assets)
             except Exception as e:
                 logger.error("Exception during sync user: {}".format(u.name))
 
         for _, g in self.groups.items():
             try:
-                g.sync()
+                g.sync(secure_group_assets)
             except Exception as e:
                 logger.error("Exception during sync group: {}".format(g.name))
 
