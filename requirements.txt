@@ -3,6 +3,7 @@ PyYAML
 future-fstrings
 pytest
 pytest-dotenv
+pytest-order
 python-ldap
 python-irodsclient
 pytest-cov

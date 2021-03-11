@@ -460,7 +460,8 @@ class iRODS(object):
         self.get_users()
         self.get_groups()
 
-    def __exit__(self, exception_type, exception_value, traceback):
+    def __del__(self):
+        logger.debug("*** iRODS Disconnect !")
         self.session.cleanup()
         self.session = None
 
@@ -579,8 +580,14 @@ def sync():
         for m in my_ldap.groups[g]['attributes']['member']:
             my_irods.groups[g].member(m)
 
+    # disconnect from ldap...
+    del my_ldap
+    
     # Write changes to iRODS
     my_irods.sync()
+
+    # disconnect from iRODS...
+    del my_irods
 
     logger.info("SYNC completed at: {}".format(start_time))
 

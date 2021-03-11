@@ -107,14 +107,21 @@ class TestAll(BaseTest):
         except Exception as e:
             pass
 
-    def test_ldap_content(self):
-        logger.debug(Ldap())
+        del my_ldap
 
-    def test_sync_ldap_to_irods_dry_run(self, depends=['test_ldap_content']):
+    @pytest.mark.order(1)
+    def test_ldap_content(self):
+        my_ldap = Ldap()
+        logger.debug(my_ldap)
+        del my_ldap
+        
+    @pytest.mark.order(2)
+    def test_sync_ldap_to_irods_dry_run(self):
         DRY_RUN = True
         sync()
 
-    def test_sync_ldap_to_irods(self, depends=['test_ldap_content']):
+    @pytest.mark.order(3)
+    def test_sync_ldap_to_irods(self):
         DRY_RUN = False
         sync()
 
@@ -125,21 +132,31 @@ class TestAll(BaseTest):
             assert u in my_irods.users.keys()
         for g in my_ldap.groups.keys():
             assert g in my_irods.groups.keys()
+        
+        del my_ldap
+        del my_irods
 
-    def test_irods_content(self, depends=['test_sync_ldap_to_irods']):
-        logger.debug(iRODS())
+    @pytest.mark.order(4)
+    def test_irods_content(self):
+        my_irods = iRODS()
+        logger.debug(my_irods)
+        del my_irods
 
-    def test_irods_iinit(self, depends=['test_irods_content']):
+    @pytest.mark.order(5)
+    def test_irods_iinit(self):
         password = os.environ.get('IRODS_PASS', 'password')
         ssh(f"echo {password} | iinit 2>/dev/null")
 
-    def test_irods_iadmin_list_users(self, depends=['test_irods_iinit']):
+    @pytest.mark.order(6)
+    def test_irods_iadmin_list_users(self):
         ssh("iadmin lu")
 
-    def test_irods_iadmin_list_groups(self, depends=['test_irods_iinit']):
+    @pytest.mark.order(7)
+    def test_irods_iadmin_list_groups(self):
         ssh("iadmin lg")
 
-    def test_irods_sync_user_updates(self, depends=['test_sync_ldap_to_irods']):
+    @pytest.mark.order(8)
+    def test_irods_sync_user_updates(self):
         my_ldap = MutableLdap()
         
         DRY_RUN = False
@@ -151,8 +168,10 @@ class TestAll(BaseTest):
         my_ldap.delete_person(self.user)
         sync()
         assert self.user not in iRODS().users
+
+        del my_ldap
         
-    def test_irods_sync_group_updates(self, depends=['test_sync_ldap_to_irods']):
+    def test_irods_sync_group_updates(self):
         my_ldap = MutableLdap()
         
         DRY_RUN = False
@@ -164,3 +183,5 @@ class TestAll(BaseTest):
         my_ldap.delete_group(self.group)
         sync()
         assert self.group not in iRODS().groups
+
+        del my_ldap
