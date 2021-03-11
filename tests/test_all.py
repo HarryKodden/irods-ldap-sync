@@ -122,8 +122,8 @@ class TestAll(BaseTest):
         DRY_RUN = False
         sync()
 
-        with Ldap as my_ldap:
-            with iRODS as my_irods:
+        with Ldap() as my_ldap:
+            with iRODS() as my_irods:
 
                 for u in my_ldap.people.keys():
                     assert u in my_irods.users.keys()

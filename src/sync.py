@@ -36,7 +36,6 @@ DRY_RUN = (os.environ.get('DRY_RUN', 'FALSE').upper() == 'TRUE')
 
 import subprocess
 
-
 class ssh():
     def __init__(self, command, host=SSH_HOST, port=SSH_PORT, user=SSH_USER):
         self.command = command
@@ -428,10 +427,22 @@ class GROUP(object):
                     for i in v:
                         self.irods_instance.metadata.add(k, i)
 
+irods_session = None
 
 class iRODS(object):
 
     def __init__(self):
+
+        self.users = {}
+        self.groups = {}
+
+        global irods_session
+
+        if irods_session:
+            # resuse earlier instantiated iRODS session.
+            self.session = irods_session
+            return
+
         try:
             env_file = os.environ.get('IRODS_ENVIRONMENT_FILE', DEFAULT_IRODS_ENVIRONMENT_FILE)
             logger.debug("Trying: {}".format(env_file))
@@ -442,26 +453,25 @@ class iRODS(object):
             self.session = iRODSSession(irods_env_file=env_file, **ssl_settings)
         except Exception:
             logger.debug("Not using environment, using host connect instead")
+            try:
+                self.session = iRODSSession(
+                    host=IRODS_HOST,
+                    port=IRODS_PORT,
+                    user=IRODS_USER,
+                    password=IRODS_PASS,
+                    zone=IRODS_ZONE
+                )
+            except Exception as e:
+                raise Exception(
+                    "Problem connecting to IRODS {} error: {}".
+                        format(os.environ['IRODS_HOST'], str(e))
+                )
 
-            self.session = iRODSSession(
-                host=IRODS_HOST,
-                port=IRODS_PORT,
-                user=IRODS_USER,
-                password=IRODS_PASS,
-                zone=IRODS_ZONE
-            )
-        except Exception as e:
-            logger.error(
-                "Problem connecting to IRODS {} error: {}".
-                format(os.environ['IRODS_HOST'], str(e))
-            )
-            exit(1)
-
-        self.users = {}
-        self.groups = {}
+        irods_session = self.session
 
     def __enter__(self):
         logger.info("*** iRODS Connected!")
+
         self.get_users()
         self.get_groups()
         
@@ -469,8 +479,6 @@ class iRODS(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         logger.info("*** iRODS Disconnect !")
-        self.session.cleanup()
-        self.session = None
 
     def json(self):
         return {
