@@ -90,31 +90,28 @@ class TestAll(BaseTest):
     def teardown_class(cls):
         logger.info("Teardown, removing test user/group...")
 
-        my_ldap = MutableLdap()
+        with MutableLdap() as my_ldap:
 
-        try:
-            my_ldap.delete_person(cls.user)
-        except Exception:
-            pass
+            try:
+                my_ldap.delete_person(cls.user)
+            except Exception:
+                pass
 
-        try:
-            my_ldap.delete_group(cls.group)
-        except Exception:
-            pass
+            try:
+                my_ldap.delete_group(cls.group)
+            except Exception:
+                pass
             
-        try:
-            sync()
-        except Exception as e:
-            pass
-
-        del my_ldap
+            try:
+                sync()
+            except Exception as e:
+                pass
 
     @pytest.mark.order(1)
     def test_ldap_content(self):
-        my_ldap = Ldap()
-        logger.debug(my_ldap)
-        del my_ldap
-
+        with Ldap() as my_ldap:
+            logger.debug(my_ldap)
+    
     @pytest.mark.order(2)
     def test_sync_ldap_to_irods_dry_run(self):
         DRY_RUN = True
@@ -125,23 +122,19 @@ class TestAll(BaseTest):
         DRY_RUN = False
         sync()
 
-        my_ldap = Ldap()
-        my_irods = iRODS()
+        with Ldap as my_ldap:
+            with iRODS as my_irods:
 
-        for u in my_ldap.people.keys():
-            assert u in my_irods.users.keys()
-        for g in my_ldap.groups.keys():
-            assert g in my_irods.groups.keys()
-        
-        del my_ldap
-        del my_irods
+                for u in my_ldap.people.keys():
+                    assert u in my_irods.users.keys()
+                for g in my_ldap.groups.keys():
+                    assert g in my_irods.groups.keys()
 
     @pytest.mark.order(4)
     def test_irods_content(self):
-        my_irods = iRODS()
-        logger.debug(my_irods)
-        del my_irods
-
+        with iRODS() as my_irods:
+            logger.debug(my_irods)
+        
     @pytest.mark.order(5)
     def test_irods_iinit(self):
         password = os.environ.get('IRODS_PASS', 'password')
@@ -157,43 +150,35 @@ class TestAll(BaseTest):
 
     @pytest.mark.order(8)
     def test_irods_sync_user_updates(self):
-        my_ldap = MutableLdap()
+        with MutableLdap() as my_ldap:
         
-        DRY_RUN = False
+            DRY_RUN = False
 
-        my_ldap.add_person(self.user)
-        sync()
+            my_ldap.add_person(self.user)
+            sync()
         
-        my_irods = iRODS()
-        assert self.user in my_irods.users
-        del my_irods
-
-        my_ldap.delete_person(self.user)
-        sync()
+            with iRODS() as my_irods:
+                assert self.user in my_irods.users
+    
+            my_ldap.delete_person(self.user)
+            sync()
         
-        my_irods = iRODS()
-        assert self.user not in my_irods.users
-        del my_irods
-
-        del my_ldap
+            with iRODS() as my_irods:
+                assert self.user not in my_irods.users
         
     def test_irods_sync_group_updates(self):
-        my_ldap = MutableLdap()
+        with MutableLdap() as my_ldap:
         
-        DRY_RUN = False
+            DRY_RUN = False
         
-        my_ldap.add_group(self.group)
-        sync()
+            my_ldap.add_group(self.group)
+            sync()
 
-        my_irods = iRODS()
-        assert self.group in my_irods.groups
-        del my_irods
+            with iRODS() as my_irods:
+                assert self.group in my_irods.groups
 
-        my_ldap.delete_group(self.group)
-        sync()
+            my_ldap.delete_group(self.group)
+            sync()
        
-        my_irods = iRODS()
-        assert self.group not in my_irods.groups
-        del my_irods
-
-        del my_ldap
+            with iRODS() as my_irods:
+                assert self.group not in my_irods.groups

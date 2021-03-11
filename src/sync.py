@@ -81,8 +81,11 @@ class Ldap(object):
         self.people = {}
         self.groups = {}
 
+    def __enter__(self):
         self.get_people()
         self.get_groups()
+
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.session.unbind_s()
@@ -457,11 +460,15 @@ class iRODS(object):
         self.users = {}
         self.groups = {}
 
+    def __enter__(self):
+        logger.info("*** iRODS Connected!")
         self.get_users()
         self.get_groups()
+        
+        return self
 
-    def __del__(self):
-        logger.debug("*** iRODS Disconnect !")
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        logger.info("*** iRODS Disconnect !")
         self.session.cleanup()
         self.session = None
 
@@ -558,36 +565,30 @@ def sync():
     logger.info("SYNC started at: {}".format(start_time))
 
     # Read LDAP...
-    my_ldap = Ldap()
 
-    # Read iRODS...
-    my_irods = iRODS()
+    with iRODS() as my_irods:
+        with Ldap() as my_ldap:
 
-    # process iRODS people...
-    for u in my_ldap.people.keys():
-        if u not in my_irods.users:
-            my_irods.add_user(u)
+            # process iRODS people...
+            for u in my_ldap.people.keys():
+                if u not in my_irods.users:
+                    my_irods.add_user(u)
 
-        my_irods.users[u].keep(my_ldap.people[u]['attributes'])
+                my_irods.users[u].keep(my_ldap.people[u]['attributes'])
 
-    # process iRODS groups...
-    for g in my_ldap.groups.keys():
-        if g not in my_irods.groups:
-            my_irods.add_group(g)
+            # process iRODS groups...
+            for g in my_ldap.groups.keys():
+                if g not in my_irods.groups:
+                    my_irods.add_group(g)
 
-        my_irods.groups[g].keep(my_ldap.groups[g]['attributes'])
+                my_irods.groups[g].keep(my_ldap.groups[g]['attributes'])
 
-        for m in my_ldap.groups[g]['attributes']['member']:
-            my_irods.groups[g].member(m)
+                for m in my_ldap.groups[g]['attributes']['member']:
+                    my_irods.groups[g].member(m)
 
-    # disconnect from ldap...
-    del my_ldap
     
-    # Write changes to iRODS
-    my_irods.sync()
-
-    # disconnect from iRODS...
-    del my_irods
+        # Write changes to iRODS
+        my_irods.sync()
 
     logger.info("SYNC completed at: {}".format(start_time))
 
