@@ -1,6 +1,7 @@
 import os
 import logging
-from src.sync import DRY_RUN, run, Ldap, iRODS, ssh
+import pytest
+from src.sync import DRY_RUN, sync, Ldap, iRODS, ssh
 
 from tests.base_test import BaseTest
 
@@ -9,31 +10,38 @@ logger = logging.getLogger(__name__)
 class MutableLdap(Ldap):
 
     def delete(self, objectClass, target):
-        filter = f"(&(ObjectClass={objectClass})({target}))"
 
-        result = self.search(os.environ['LDAP_BASE_DN'], searchFilter=filter)
+        try:
+            filter = f"(&(ObjectClass={objectClass})({target}))"
 
-        assert(len(result) == 1)
-        entries = result[0]
+            result = self.search(os.environ['LDAP_BASE_DN'], searchFilter=filter)
 
-        assert(len(entries) == 1)
-        rdn, _ = entries[0]
+            assert(len(result) == 1)
+            entries = result[0]
 
-        logger.info(rdn)
-        assert(rdn.startswith(target))
+            assert(len(entries) == 1)
+            rdn, _ = entries[0]
+
+            logger.debug(rdn)
+            assert(rdn.startswith(target))
         
-        self.session.delete(rdn)
+            self.session.delete(rdn)
+        except Exception as e:
+            raise Exception("Error during LDAP delete: {}, error: {}".format(target, str(e)))
 
     def add(self, dn, attrs):
         from ldap import modlist
 
-        logger.info(dn)
-        ldif = modlist.addModlist(attrs)
-        logger.info(ldif)
-        self.session.add_s(dn,ldif)
+        try:
+            logger.debug(dn)
+            ldif = modlist.addModlist(attrs)
+            logger.debug(ldif)
+            self.session.add_s(dn,ldif)
+        except Exception as e:
+            raise Exception("Error during LDAP add: {}, error: {}".format(dn, str(e)))
 
     def add_person(self, name):
-        logger.info("ADD PERSON: {}".format(name))
+        logger.debug("Add person: {} toLDAP".format(name))
 
         self.add(
             f"{os.environ.get('LDAP_USER_KEY', 'uid')}={name},{os.environ['LDAP_BASE_DN']}",
@@ -46,7 +54,7 @@ class MutableLdap(Ldap):
         )
 
     def add_group(self, name):
-        logger.info("ADD GROUP: {}".format(name))
+        logger.debug("Add group: {} to LDAP".format(name))
 
         self.add(
             f"{os.environ.get('LDAP_GROUP_KEY', 'cn')}={name},{os.environ['LDAP_BASE_DN']}",
@@ -57,7 +65,7 @@ class MutableLdap(Ldap):
         )
 
     def delete_person(self, name):
-        logger.info("DELETE PERSON: {}".format(name))
+        logger.debug("Delete person: {} from LDAP".format(name))
 
         self.delete("inetOrgPerson", "{}={}".format(
                 os.environ.get('LDAP_USER_KEY', 'uid'), name
@@ -65,7 +73,7 @@ class MutableLdap(Ldap):
         )        
 
     def delete_group(self, name):
-        logger.info("DELETE GROUP: {}".format(name))
+        logger.debug("Delete group: {} from LDAP".format(name))
     
         self.delete("groupOfMembers", "{}={}".format(
                 os.environ.get('LDAP_GROUP_KEY', 'cn'), name
@@ -75,89 +83,84 @@ class MutableLdap(Ldap):
 
 class TestAll(BaseTest):
 
-    def test_01_ldap_content(self):
-        my_ldap = Ldap()
-        logger.info(my_ldap)
+    user = "test_user"
+    group = "test_group"
 
-    def test_02_sync_ldap_to_irods_dry_run(self):
+    @classmethod
+    def teardown_class(cls):
+        logger.info("Teardown, removing test user/group...")
+
+        my_ldap = MutableLdap()
+
+        try:
+            my_ldap.delete_person(cls.user)
+        except Exception:
+            pass
+
+        try:
+            my_ldap.delete_group(cls.group)
+        except Exception:
+            pass
+            
+        try:
+            sync()
+        except Exception as e:
+            pass
+
+    def test_ldap_content(self):
+        logger.debug(Ldap())
+
+    def test_sync_ldap_to_irods_dry_run(self, depends=['test_ldap_content']):
         DRY_RUN = True
-        run()
+        sync()
 
-    def test_02_sync_ldap_to_irods(self):
+    def test_sync_ldap_to_irods(self, depends=['test_ldap_content']):
         DRY_RUN = False
-        run()
+        sync()
 
-    def test_03_irods_content(self):
+        my_ldap = Ldap()
         my_irods = iRODS()
-        logger.info(my_irods)
 
-    def test_04_irods_iinit(self):
+        for u in my_ldap.people.keys():
+            assert u in my_irods.users.keys()
+        for g in my_ldap.groups.keys():
+            assert g in my_irods.groups.keys()
+
+    def test_irods_content(self, depends=['test_sync_ldap_to_irods']):
+        logger.debug(iRODS())
+
+    def test_irods_iinit(self, depends=['test_irods_content']):
         password = os.environ.get('IRODS_PASS', 'password')
         ssh(f"echo {password} | iinit 2>/dev/null")
 
-    def test_05_irods_iadmin_list_users(self):
+    def test_irods_iadmin_list_users(self, depends=['test_irods_iinit']):
         ssh("iadmin lu")
 
-    def test_06_irods_iadmin_list_groups(self):
+    def test_irods_iadmin_list_groups(self, depends=['test_irods_iinit']):
         ssh("iadmin lg")
 
-    def test_07_irods_sync_after_ldap_add_person(self):
+    def test_irods_sync_user_updates(self, depends=['test_sync_ldap_to_irods']):
         my_ldap = MutableLdap()
         
         DRY_RUN = False
 
-        u = "test_user"
-        try:
-            my_ldap.delete_person(u)
-        except Exception:
-            pass
+        my_ldap.add_person(self.user)
+        sync()
+        assert self.user in iRODS().users
 
-        my_ldap.add_person(u)
-        run()
-        my_irods = iRODS()
+        my_ldap.delete_person(self.user)
+        sync()
+        assert self.user not in iRODS().users
         
-    def test_08_irods_sync_after_add_group(self):
+    def test_irods_sync_group_updates(self, depends=['test_sync_ldap_to_irods']):
         my_ldap = MutableLdap()
         
         DRY_RUN = False
-
-        g = "test_group"
-
-        try:
-            my_ldap.delete_group(g)
-        except Exception:
-            pass
-
-        my_ldap.add_group(g)
-        run()
-        my_irods = iRODS()
         
-    def test_09_irods_sync_after_ldap_delete_person(self):
-        my_ldap = MutableLdap()
-        
-        DRY_RUN = False
+        my_ldap.add_group(self.group)
+        sync()
+        assert self.group in iRODS().groups
 
-        u = "test_user"
-
-        try:
-            my_ldap.add_person(u)
-        except Exception:
-            pass
-
-        my_ldap.delete_person(u)
-        run()
-        my_irods = iRODS()
-        
-    def test_10_irods_sync_after_delete_group(self):
-        my_ldap = MutableLdap()
-        
-        DRY_RUN = False
-
-        g = "test_group"
-        try:
-            my_ldap.add_group(g)
-        except Exception:
-            pass
-        my_ldap.delete_group(g)
-        run()
-        my_irods = iRODS()
+        my_ldap.delete_group(self.group)
+        sync()
+        assert self.group not in iRODS().groups

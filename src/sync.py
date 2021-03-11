@@ -55,13 +55,13 @@ class ssh():
                 self.command
         ]
 
-        logger.info("Executing command: {} on {}".format(command, self.host))
+        logger.debug("Executing command: {} on {}".format(command, self.host))
 
         if DRY_RUN:
             return
 
         result = subprocess.run(command, capture_output=True, text=True)
-        logger.info("stdout:\n{}".format(result.stdout))
+        logger.debug("stdout:\n{}".format(result.stdout))
 
 class Ldap(object):
 
@@ -218,21 +218,12 @@ class USER(object):
 
     def json(self):
         return {
-            'name': self.name,
-            'instance': self.instance()
-        }
-
-    def instance(self):
-        if self.irods_instance:
-            return {
-                'id': self.irods_instance.id,
-                'name': self.irods_instance.name,
-                'type': self.irods_instance.type,
-                'zone': self.irods_instance.zone,
-                'metadata': self.metadata()
-            }
-        else:
-            return {}
+            'id': self.irods_instance.id,
+            'name': self.irods_instance.name,
+            'type': self.irods_instance.type,
+            'zone': self.irods_instance.zone,
+            'metadata': self.metadata()
+        } if self.irods_instance else {}
 
     def metadata(self):
         result = {}
@@ -254,7 +245,7 @@ class USER(object):
         self.attributes = attributes
         return self
 
-    def sync(self, secure_assets_on_delete):
+    def sync(self, salvage_data):
 
         if not self.irods_instance:
             return
@@ -263,7 +254,7 @@ class USER(object):
             logger.info("IRODS Remove User: {}".format(self.name))
 
             if not DRY_RUN:
-                secure_assets_on_delete(self.name)
+                salvage_data(self.name)
                 self.irods_instance.remove()
 
             ssh("sudo userdel -r {}".format(self.name))
@@ -348,22 +339,13 @@ class GROUP(object):
 
     def json(self):
         return {
-            "name": self.name,
+            'id': self.irods_instance.id,
+            'name': self.irods_instance.name,
+            'metadata': self.metadata(),
             'members': [
                 m for m in self.members.keys()
             ],
-            'instance': self.instance()
-        }
-
-    def instance(self):
-        if self.irods_instance:
-            return {
-                'id': self.irods_instance.id,
-                'name': self.irods_instance.name,
-                'metadata': self.metadata()
-            }
-        else:
-            return {}
+        } if self.irods_instance else {}
 
     def metadata(self):
         result = {}
@@ -390,7 +372,7 @@ class GROUP(object):
         self.members[member] = True
         return self
 
-    def sync(self, secure_assets_on_delete):
+    def sync(self, salvage_data):
 
         if not self.irods_instance:
             return
@@ -409,7 +391,7 @@ class GROUP(object):
 
             logger.info("IRODS Remove Group: {}".format(self.name))
             if not DRY_RUN:
-                secure_assets_on_delete(self.name)
+                salvage_data(self.name)
                 self.irods_instance.remove()
 
             self.irods_instance = None
@@ -449,14 +431,14 @@ class iRODS(object):
     def __init__(self):
         try:
             env_file = os.environ.get('IRODS_ENVIRONMENT_FILE', DEFAULT_IRODS_ENVIRONMENT_FILE)
-            logger.info("Trying: {}".format(env_file))
+            logger.debug("Trying: {}".format(env_file))
 
             #   env_file = os.path.expanduser('~/.irods/irods_environment.json')
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
             ssl_settings = {'ssl_context': ssl_context}
             self.session = iRODSSession(irods_env_file=env_file, **ssl_settings)
-        except Exception as e:
-            logger.info("Not using environment, using host connect instead")
+        except Exception:
+            logger.debug("Not using environment, using host connect instead")
 
             self.session = iRODSSession(
                 host=IRODS_HOST,
@@ -484,8 +466,8 @@ class iRODS(object):
 
     def json(self):
         return {
-            'users': [u.json() for _, u in self.users.items()],
-            'groups': [g.json() for _, g in self.groups.items()]
+            'users': { k: v.json() for k,v in self.users.items() },
+            'groups': { k: v.json() for k,v in self.groups.items() }
         }
 
     def __repr__(self):
@@ -550,26 +532,26 @@ class iRODS(object):
 
         logger.debug("Syncing...")
 
-        def secure_user_assets(name):
+        def salvage_user_data(name):
             logger.info("*** SECURE USER DATA: {}".format(name))
 
-        def secure_group_assets(name):
+        def salvage_group_data(name):
             logger.info("*** SECURE GROUP DATA: {}".format(name))
 
         for _, u in self.users.items():
             try:
-                u.sync(secure_user_assets)
+                u.sync(salvage_user_data)
             except Exception:
                 logger.error("Exception during sync user: {}".format(u.name))
 
         for _, g in self.groups.items():
             try:
-                g.sync(secure_group_assets)
+                g.sync(salvage_group_data)
             except Exception as e:
                 logger.error("Exception during sync group: {}".format(g.name))
 
 
-def run():
+def sync():
 
     start_time = datetime.now()
     logger.info("SYNC started at: {}".format(start_time))
@@ -604,4 +586,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    sync()
