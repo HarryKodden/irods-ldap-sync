@@ -450,6 +450,7 @@ class iRODS(object):
             #   env_file = os.path.expanduser('~/.irods/irods_environment.json')
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
             ssl_settings = {'ssl_context': ssl_context}
+
             self.session = iRODSSession(irods_env_file=env_file, **ssl_settings)
         except Exception:
             logger.debug("Not using environment, using host connect instead")
@@ -470,7 +471,7 @@ class iRODS(object):
         irods_session = self.session
 
     def __enter__(self):
-        logger.info("*** iRODS Connected!")
+        logger.debug("*** iRODS Connected!")
 
         self.get_users()
         self.get_groups()
@@ -478,7 +479,7 @@ class iRODS(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        logger.info("*** iRODS Disconnect !")
+        logger.debug("*** iRODS Disconnect !")
 
     def json(self):
         return {

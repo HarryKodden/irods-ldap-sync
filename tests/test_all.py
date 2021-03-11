@@ -88,24 +88,30 @@ class TestAll(BaseTest):
 
     @classmethod
     def teardown_class(cls):
-        logger.info("Teardown, removing test user/group...")
+        logger.info("Teardown, verify test user/group are removed")
 
         with MutableLdap() as my_ldap:
 
+            """ if tests PASS, then test user/group are removed already
+                if tests FAIL, maybe they are not removed decently,
+                below is a safe guard for that situation
+            """
+            need_sync = False
+
             try:
                 my_ldap.delete_person(cls.user)
+                need_sync = True
             except Exception:
                 pass
 
             try:
                 my_ldap.delete_group(cls.group)
+                need_sync = True
             except Exception:
                 pass
             
-            try:
+            if need_sync:
                 sync()
-            except Exception as e:
-                pass
 
     @pytest.mark.order(1)
     def test_ldap_content(self):
