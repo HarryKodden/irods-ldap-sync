@@ -114,7 +114,7 @@ class TestAll(BaseTest):
         my_ldap = Ldap()
         logger.debug(my_ldap)
         del my_ldap
-        
+
     @pytest.mark.order(2)
     def test_sync_ldap_to_irods_dry_run(self):
         DRY_RUN = True
@@ -163,11 +163,17 @@ class TestAll(BaseTest):
 
         my_ldap.add_person(self.user)
         sync()
-        assert self.user in iRODS().users
+        
+        my_irods = iRODS()
+        assert self.user in my_irods.users
+        del my_irods
 
         my_ldap.delete_person(self.user)
         sync()
-        assert self.user not in iRODS().users
+        
+        my_irods = iRODS()
+        assert self.user not in my_irods.users
+        del my_irods
 
         del my_ldap
         
@@ -178,10 +184,16 @@ class TestAll(BaseTest):
         
         my_ldap.add_group(self.group)
         sync()
-        assert self.group in iRODS().groups
+
+        my_irods = iRODS()
+        assert self.group in my_irods.groups
+        del my_irods
 
         my_ldap.delete_group(self.group)
         sync()
-        assert self.group not in iRODS().groups
+       
+        my_irods = iRODS()
+        assert self.group not in my_irods.groups
+        del my_irods
 
         del my_ldap
