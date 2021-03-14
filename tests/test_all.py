@@ -166,6 +166,8 @@ class TestAll(BaseTest):
             with iRODS() as my_irods:
                 assert self.user in my_irods.users
     
+            #ssh("iadmin lg")
+
             my_ldap.delete_person(self.user)
             sync()
         
@@ -179,6 +181,8 @@ class TestAll(BaseTest):
         
             my_ldap.add_group(self.group)
             sync()
+
+            ssh("iadmin lg")
 
             with iRODS() as my_irods:
                 assert self.group in my_irods.groups

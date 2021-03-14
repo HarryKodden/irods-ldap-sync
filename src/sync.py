@@ -12,6 +12,7 @@ from datetime import datetime
 from irods.session import iRODSSession
 from irods.column import Criterion
 from irods.models import User
+from irods.query import SpecificQuery
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -33,6 +34,8 @@ SSH_PORT = os.environ.get('SSH_PORT', 2222)
 SSH_USER = os.environ.get('SSH_USER', 'root')
 
 DRY_RUN = (os.environ.get('DRY_RUN', 'FALSE').upper() == 'TRUE')
+
+DELETE_MARKER = '-'
 
 import subprocess
 
@@ -205,7 +208,7 @@ class Ldap(object):
                 'attributes': attributes
             }
 
-class USER(object):
+class USER:
 
     def __init__(self, name, instance):
         self.name = name
@@ -247,7 +250,7 @@ class USER(object):
         self.attributes = attributes
         return self
 
-    def sync(self, salvage_data):
+    def sync(self, salvage_function):
 
         if not self.irods_instance:
             return
@@ -256,8 +259,11 @@ class USER(object):
             logger.info("IRODS Remove User: {}".format(self.name))
 
             if not DRY_RUN:
-                salvage_data(self.name)
-                self.irods_instance.remove()
+                try:
+                    # this succeeds if user has no data attached...
+                    self.irods_instance.remove()
+                except Exception:
+                    salvage_function(self.name)
 
             ssh("sudo userdel -r {}".format(self.name))
 
@@ -321,7 +327,7 @@ class USER(object):
                         self.irods_instance.metadata.add(k, i)
 
 
-class GROUP(object):
+class GROUP:
 
     def __init__(self, name, instance):
         self.name = name
@@ -374,7 +380,7 @@ class GROUP(object):
         self.members[member] = True
         return self
 
-    def sync(self, salvage_data):
+    def sync(self, salvage_function):
 
         if not self.irods_instance:
             return
@@ -393,8 +399,11 @@ class GROUP(object):
 
             logger.info("IRODS Remove Group: {}".format(self.name))
             if not DRY_RUN:
-                salvage_data(self.name)
-                self.irods_instance.remove()
+                try:
+                    # this succeeds if group no data attached...
+                    self.irods_instance.remove()
+                except Exception:
+                    salvage_function(self.name)
 
             self.irods_instance = None
             self.members = []
@@ -518,9 +527,6 @@ class iRODS(object):
         for result in query:
             name = result[User.name]
 
-            if name.startswith('_'):
-                continue
-
             self.add_user(name, instance=self.session.users.get(name))
 
         logger.debug("iRODS Users: {}".format(self))
@@ -536,7 +542,7 @@ class iRODS(object):
             if name in ['rodsadmin', 'public']:
                 continue
 
-            if name.startswith('_'):
+            if name.startswith(DELETE_MARKER):
                 continue
 
             self.add_group(name, instance=self.session.user_groups.get(name))
@@ -546,24 +552,29 @@ class iRODS(object):
         return self
 
     def sync(self):
-
         logger.debug("Syncing...")
+        
+        def data_salvager(src):
+            stamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            dst = DELETE_MARKER + src + '-' + stamp
 
-        def salvage_user_data(name):
-            logger.info("*** SECURE USER DATA: {}".format(name))
+            sql = "update r_user_main set user_name = '{}', user_type_name = 'rodsgroup' where user_name = {};".format(dst, src)
+            alias = 'update_username'
+            query = SpecificQuery(self.session, sql, alias)
 
-        def salvage_group_data(name):
-            logger.info("*** SECURE GROUP DATA: {}".format(name))
+            query.register()
+            query.execute()
+            query.remove()
 
         for _, u in self.users.items():
             try:
-                u.sync(salvage_user_data)
+                u.sync(data_salvager)
             except Exception:
                 logger.error("Exception during sync user: {}".format(u.name))
 
         for _, g in self.groups.items():
             try:
-                g.sync(salvage_group_data)
+                g.sync(data_salvager)
             except Exception as e:
                 logger.error("Exception during sync group: {}".format(g.name))
 
