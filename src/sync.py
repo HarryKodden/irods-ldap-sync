@@ -261,9 +261,11 @@ class USER:
             if not DRY_RUN:
                 try:
                     # this succeeds if user has no data attached...
+                    #raise Exception("DO IT !")
                     self.irods_instance.remove()
                 except Exception:
-                    salvage_function(self.name)
+                    pass
+                    #salvage_function(self.name)
 
             ssh("sudo userdel -r {}".format(self.name))
 
@@ -403,7 +405,8 @@ class GROUP:
                     # this succeeds if group no data attached...
                     self.irods_instance.remove()
                 except Exception:
-                    salvage_function(self.name)
+                    pass
+                    #salvage_function(self.name)
 
             self.irods_instance = None
             self.members = []
@@ -558,13 +561,15 @@ class iRODS(object):
             stamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             dst = DELETE_MARKER + src + '-' + stamp
 
-            sql = "update r_user_main set user_name = '{}', user_type_name = 'rodsgroup' where user_name = {};".format(dst, src)
-            alias = 'update_username'
-            query = SpecificQuery(self.session, sql, alias)
-
-            query.register()
-            query.execute()
-            query.remove()
+            sql = "update r_user_main set user_name = '{}', user_type_name = 'rodsgroup' where user_name = '{}';".format(dst, src)
+            logger.error("SQL: {}".format(sql))
+            try:
+                logger.error(query = SpecificQuery(self.session, sql))
+                logger.error("Query initialised !")
+                query.execute()
+                logger.error("Query executed !")
+            except Exception as e:
+                logger.error("Exception: {}". str(e))
 
         for _, u in self.users.items():
             try:
