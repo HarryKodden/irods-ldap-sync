@@ -6,6 +6,7 @@ import ldap
 import json
 import logging
 import ssl
+import uuid
 
 from datetime import datetime
 
@@ -34,8 +35,6 @@ SSH_PORT = os.environ.get('SSH_PORT', 2222)
 SSH_USER = os.environ.get('SSH_USER', 'root')
 
 DRY_RUN = (os.environ.get('DRY_RUN', 'FALSE').upper() == 'TRUE')
-
-DELETE_MARKER = '-'
 
 import subprocess
 
@@ -261,11 +260,9 @@ class USER:
             if not DRY_RUN:
                 try:
                     # this succeeds if user has no data attached...
-                    #raise Exception("DO IT !")
                     self.irods_instance.remove()
-                except Exception:
-                    pass
-                    #salvage_function(self.name)
+                except:
+                    salvage_function(self.name)
 
             ssh("sudo userdel -r {}".format(self.name))
 
@@ -405,8 +402,7 @@ class GROUP:
                     # this succeeds if group no data attached...
                     self.irods_instance.remove()
                 except Exception:
-                    pass
-                    #salvage_function(self.name)
+                    salvage_function(self.name)
 
             self.irods_instance = None
             self.members = []
@@ -545,10 +541,16 @@ class iRODS(object):
             if name in ['rodsadmin', 'public']:
                 continue
 
-            if name.startswith(DELETE_MARKER):
+            instance = self.session.user_groups.get(name)
+
+            if 'DELETED' in instance.metadata.keys():
+                logger.info("Deleted group detected")
+                logger.info("* Original user/group: {}".format(instance.metadata.get_one("DELETED").value))
+                logger.info("* Timestamp: {}".format(instance.metadata.get_one("TIMESTAMP").value))
+                logger.info("* Owners: {}".format([u.name for u in instance.members]))
                 continue
 
-            self.add_group(name, instance=self.session.user_groups.get(name))
+            self.add_group(name, instance=instance)
 
         logger.debug("iRODS Groups: {}".format(self))
 
@@ -556,20 +558,15 @@ class iRODS(object):
 
     def sync(self):
         logger.debug("Syncing...")
-        
-        def data_salvager(src):
-            stamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-            dst = DELETE_MARKER + src + '-' + stamp
 
-            sql = "update r_user_main set user_name = '{}', user_type_name = 'rodsgroup' where user_name = '{}';".format(dst, src)
-            logger.error("SQL: {}".format(sql))
+        def data_salvager(src):
             try:
-                logger.error(query = SpecificQuery(self.session, sql))
-                logger.error("Query initialised !")
-                query.execute()
-                logger.error("Query executed !")
+                instance = self.session.user_groups.create(str(uuid.uuid4()))
+                instance.metadata.add("DELETED", src)
+                instance.metadata.add("TIMESTAMP", datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+                instance.addmember(IRODS_USER)
             except Exception as e:
-                logger.error("Exception: {}". str(e))
+                logger.error("Error creating salvager group: {}".format(str(e)))
 
         for _, u in self.users.items():
             try:
