@@ -13,7 +13,7 @@ from datetime import datetime
 from irods.session import iRODSSession
 from irods.column import Criterion
 from irods.models import User
-from irods.query import SpecificQuery
+from irods.access import iRODSAccess
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -52,6 +52,7 @@ class ssh():
                 '/usr/bin/ssh',
                 '-p', '{}'.format(self.port),
                 '-o', 'StrictHostKeyChecking=no',
+                '-o', 'UserKnownHostsFile=/dev/null',
                 self.user+'@'+self.host,
                 self.command
         ]
@@ -62,8 +63,11 @@ class ssh():
             return
 
         result = subprocess.run(command, capture_output=True, text=True)
-        logger.debug("stdout:\n{}".format(result.stdout))
-
+        if result.stdout > '':
+            logger.debug("{}:\n*** TOP OF STDOUT ***\n{}*** END OF STDOUT ***".format(command, result.stdout))
+        if result.stderr > '':
+            logger.debug("{}:\n*** TOP OF STDERR ***\n{}*** END OF STDERR ***".format(command, result.stderr))
+    
 class Ldap(object):
 
     def __init__(self):
@@ -262,9 +266,9 @@ class USER:
                     # this succeeds if user has no data attached...
                     self.irods_instance.remove()
                 except:
-                    salvage_function(self.name)
+                    salvage_function(self)
 
-            ssh("sudo userdel -r {}".format(self.name))
+                ssh("sudo userdel -r {} 2>/dev/null".format(self.name))
 
             self.must_keep = False
             self.irods_instance = None
@@ -273,7 +277,7 @@ class USER:
             if not DRY_RUN:
                 self.irods_instance.metadata.remove_all()
 
-            ssh("sudo useradd -m {}".format(self.name))
+            ssh("sudo useradd -m {} 2>/dev/null".format(self.name))
             ssh("sudo su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(
                 self.name
                 ))
@@ -402,7 +406,7 @@ class GROUP:
                     # this succeeds if group no data attached...
                     self.irods_instance.remove()
                 except Exception:
-                    salvage_function(self.name)
+                    salvage_function(self)
 
             self.irods_instance = None
             self.members = []
@@ -544,10 +548,10 @@ class iRODS(object):
             instance = self.session.user_groups.get(name)
 
             if 'DELETED' in instance.metadata.keys():
-                logger.info("Deleted group detected")
-                logger.info("* Original user/group: {}".format(instance.metadata.get_one("DELETED").value))
-                logger.info("* Timestamp: {}".format(instance.metadata.get_one("TIMESTAMP").value))
-                logger.info("* Owners: {}".format([u.name for u in instance.members]))
+                logger.debug("Deleted group detected")
+                logger.debug("* Original user/group: {}".format(instance.metadata.get_one("DELETED").value))
+                logger.debug("* Timestamp: {}".format(instance.metadata.get_one("TIMESTAMP").value))
+                logger.debug("* Owners: {}".format([u.name for u in instance.members]))
                 continue
 
             self.add_group(name, instance=instance)
@@ -559,12 +563,90 @@ class iRODS(object):
     def sync(self):
         logger.debug("Syncing...")
 
-        def data_salvager(src):
+        def show_collection(title, collection, level=0):
+
+            logger.info(f"[{title}-DIR]" + '*' * (level) + f" {collection.path}:")
+            for d in collection.data_objects:
+                logger.info(f"[{title}-OBJ]" + '*' * (level+1) + f" {d.path}")
+            for c in collection.subcollections:
+                show_collection(title, c, level+1)
+
+        def data_salvager(obsolete):
+
+            def destination(src, dst, target):
+                path = target[len(src):]
+
+                for p in path.split('/')[:-1]:
+                    dst += f"/{p}"
+                    if not self.session.collections.get(dst):
+                        logger.info(f"[INTERMEDIATE COLLECTION]: {dst}")
+                        self.session.collections.create(dst)
+
+                    src += f"/{p}"
+
+                    logger.info(f"*** Grant ownership to {src} to: {IRODS_USER}")
+                    acl = iRODSAccess('admin:own', src, IRODS_USER, IRODS_ZONE)
+                    self.session.permissions.set(acl)
+                    
+                return dst
+
+            if isinstance(obsolete, GROUP) and len(obsolete.members) > 0:
+                raise Exception("Obsolete group still has members")
+
             try:
+                logger.info("*** Create salvage group...")
+
                 instance = self.session.user_groups.create(str(uuid.uuid4()))
-                instance.metadata.add("DELETED", src)
+                instance.metadata.add("DELETED", obsolete.name)
                 instance.metadata.add("TIMESTAMP", datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
                 instance.addmember(IRODS_USER)
+
+                src = "/{}/home/{}".format(IRODS_ZONE, obsolete.name)
+                dst = "/{}/home/{}".format(IRODS_ZONE, instance.name)
+
+                logger.info(f"*** Grant ownership to {src} to: {IRODS_USER}")
+                acl = iRODSAccess('admin:own', src, IRODS_USER, IRODS_ZONE)
+                self.session.permissions.set(acl, recursive=True)
+
+                logger.info(f"*** Enable inherit on {dst}")
+                acl = iRODSAccess('inherit', dst, instance.name, IRODS_ZONE)
+                self.session.permissions.set(acl)
+
+                contents = self.session.collections.get(src).walk(topdown=True)
+
+                try:
+                    while True:
+                        _, dir, obj = next(contents)
+
+                        for i in dir:
+                            dest = destination(src, dst, i.path[len(src):])
+
+                            logger.info(f"destination: {dest}")
+
+                            logger.info(f"*** Grant ownership to {i.path} to: {IRODS_USER}")
+                            acl = iRODSAccess('admin:own', i.path, IRODS_USER, IRODS_ZONE)
+                            self.session.permissions.set(acl)
+
+                            self.session.collections.move(i.path, dest)
+
+                            logger.info("Collection moved")
+
+                        for i in obj:
+                            dest = destination(src, dst, i.path[len(src):])
+
+                            logger.info(f"destination: {dest}")
+
+                            self.session.data_objects.move(i.path, dest)
+                            logger.info("Data object moved")
+
+                except StopIteration:
+                    logger.info("Contents processed !")
+
+                show_collection("DST", self.session.collections.get(dst))
+
+                logger.info("*** Remove irods instance: {}".format(obsolete.name))
+                obsolete.irods_instance.remove()
+
             except Exception as e:
                 logger.error("Error creating salvager group: {}".format(str(e)))
 

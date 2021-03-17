@@ -156,24 +156,34 @@ class TestAll(BaseTest):
 
     @pytest.mark.order(8)
     def test_irods_sync_user_updates(self):
-        with MutableLdap() as my_ldap:
-        
-            DRY_RUN = False
 
-            my_ldap.add_person(self.user)
-            sync()
-        
-            with iRODS() as my_irods:
-                assert self.user in my_irods.users
-    
-            #ssh("iadmin lg")
+        def update_user(with_data):
+            with MutableLdap() as my_ldap:
+            
+                DRY_RUN = False
 
-            my_ldap.delete_person(self.user)
-            sync()
-        
-            with iRODS() as my_irods:
-                assert self.user not in my_irods.users
-        
+                my_ldap.add_person(self.user)
+                sync()
+            
+                with iRODS() as my_irods:
+                    assert self.user in my_irods.users
+                    password = 'secret'
+
+                    if with_data:
+                        logger.info("Create data for this user...")
+
+                        my_irods.session.users.modify(self.user, 'password', password)
+                        ssh(f"sudo su - {self.user} bash -c 'echo {password} | iinit 2>/dev/null; ls -l > data; imkdir foo; iput -f data; iput -f data foo/data;'")
+ 
+                my_ldap.delete_person(self.user)
+                sync()
+            
+                with iRODS() as my_irods:
+                    assert self.user not in my_irods.users
+                    
+        for withdata_yes_or_no in (True, False):
+            update_user(withdata_yes_or_no)
+            
     def test_irods_sync_group_updates(self):
         with MutableLdap() as my_ldap:
         
