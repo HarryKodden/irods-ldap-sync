@@ -621,23 +621,20 @@ class iRODS(object):
                         for i in dir:
                             dest = destination(src, dst, i.path[len(src):])
 
-                            logger.info(f"destination: {dest}")
-
                             logger.info(f"*** Grant ownership to {i.path} to: {IRODS_USER}")
                             acl = iRODSAccess('admin:own', i.path, IRODS_USER, IRODS_ZONE)
                             self.session.permissions.set(acl)
 
-                            self.session.collections.move(i.path, dest)
+                            logger.info(f"Collection {i.path} moving to {dest}...")
 
-                            logger.info("Collection moved")
+                            self.session.collections.move(i.path, dest)
 
                         for i in obj:
                             dest = destination(src, dst, i.path[len(src):])
 
-                            logger.info(f"destination: {dest}")
+                            logger.info(f"Data object {i.path} moving to {dest}...")
 
                             self.session.data_objects.move(i.path, dest)
-                            logger.info("Data object moved")
 
                 except StopIteration:
                     logger.info("Contents processed !")
