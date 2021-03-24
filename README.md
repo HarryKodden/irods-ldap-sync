@@ -1,21 +1,21 @@
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/HarryKodden/irods-ldap-sync)
-
-![example workflow name](https://github.com/HarryKodden/irods-ldap-sync/workflows/CI/badge.svg)
-
-[![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main&kill_cache=1)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main)
-
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/HarryKodden/irods-ldap-sync/HEAD)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/HarryKodden/irods-ldap-sync) ![example workflow name](https://github.com/HarryKodden/irods-ldap-sync/workflows/CI/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main&kill_cache=1)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/HarryKodden/irods-ldap-sync/HEAD)
 
 # irods-ldap-sync
 
 This repository demonstrates the synchronization of LDAP object into iRODS cataloque.
 
 Features:
+
 * LDAP people objects are translated to iRODS users
+
 * LDAP group objects arre translated to iRODS groups
+
 * LDAP group memberships are translated to iRODS group memberships
+
 * LDAP attributes are translated to iRODS metadata
+
 * For each user identity created, a user is also created on a SSH server
+
 * When the LDAP user object contains a **sshPublicKey** attribute, also an **~/.ssh/authorized_keys** entry is created containing that key.
 
 Please look in the **.github/workflows/ci.yml** for configuration details
@@ -23,19 +23,23 @@ Please look in the **.github/workflows/ci.yml** for configuration details
 ## Running
 
 You have multiple run options:
+
 1. Run locally with LDAP and iRODS docker containers.
+
 2. Connect to existing LDAP and/or iRODS instances
 
 ### Run on localhost
 
 Running on localhost: (docker is required !)
+
 1. start local LDAP container, (data is loaded during start as well)
+
 ```
-./etc/ldap_start.sh
+./bin/ldap_start.sh
 ```
 2. start local iRODS container
 ```
-./etc/irods_start.sh
+./bin/irods_start.sh
 ```
 
 ## Gitpod
