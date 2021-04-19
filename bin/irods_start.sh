@@ -14,7 +14,8 @@ VER="4.0.3"
 
 docker run \
   --name my-irods-icat \
-  --publish "${IRDDS_PORT:-1247}":1247 \
+  --hostname icat \
+  --publish "${IRODS_PORT:-1247}":1247 \
   --rm \
   --detach \
   irods/icat:${VER} "${IRODS_PASS:-password}"
@@ -23,6 +24,7 @@ icat=$(docker inspect my-irods-icat | grep IPAddress | grep -v null | cut -d '"'
 
 docker run \
   --name my-irods-icommands \
+  --hostname icommands \
   --rm \
   --detach \
   --publish "${SSH_PORT:-2222}":22 \
