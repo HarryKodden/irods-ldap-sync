@@ -22,10 +22,40 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger('root')
 
-IRODS_ZONE = os.environ.get('IRODS_ZONE', 'tempZone')
-IRODS_HOST = os.environ.get('IRODS_HOST', 'localhost')
-IRODS_PORT = os.environ.get('IRODS_PORT', 1247)
-IRODS_USER = os.environ.get('IRODS_USER', '')
+IRODS_HOST = None
+IRODS_PORT = None
+IRODS_USER = None
+IRODS_ZONE = None
+
+json_file = os.environ.get('IRODS_JSON', None)
+if json_file:
+    try:
+        logger.info("Read JSON environment: {}".format(json_file))
+
+        with open(json_file) as f:
+            data = json.load(f)
+
+            IRODS_HOST = data.get('irods_host', None)
+            IRODS_PORT = data.get('irods_port', None)
+            IRODS_USER = data.get('irods_user_name', None)
+            IRODS_ZONE = data.get('irods_zone_name', None)
+
+    except Exception as e:
+        logger.info("Error during reading JSON environment: {}".format(str(e)))
+        exit(0)
+
+if not IRODS_HOST:
+    IRODS_HOST = os.environ.get('IRODS_HOST', 'localhost')
+
+if not IRODS_ZONE:
+    IRODS_ZONE = os.environ.get('IRODS_ZONE', 'tempZone')
+
+if not IRODS_PORT:
+    IRODS_PORT = os.environ.get('IRODS_PORT', 1247)
+
+if not IRODS_USER:
+    IRODS_USER = os.environ.get('IRODS_USER', '')
+
 IRODS_PASS = os.environ.get('IRODS_PASS', '')
 
 DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
@@ -35,6 +65,8 @@ SSH_PORT = os.environ.get('SSH_PORT', 2222)
 SSH_USER = os.environ.get('SSH_USER', 'root')
 
 DRY_RUN = (os.environ.get('DRY_RUN', 'FALSE').upper() == 'TRUE')
+
+logger.info(f"Connecting to irods: {IRODS_USER}#{IRODS_ZONE}@{IRODS_HOST}:{IRODS_PORT}")
 
 import subprocess
 
@@ -456,7 +488,7 @@ class iRODS(object):
             return
 
         try:
-            env_file = os.environ.get('IRODS_ENVIRONMENT_FILE', DEFAULT_IRODS_ENVIRONMENT_FILE)
+            env_file = os.environ.get('IRODS_JSON', DEFAULT_IRODS_ENVIRONMENT_FILE)
             logger.debug("Trying: {}".format(env_file))
 
             #   env_file = os.path.expanduser('~/.irods/irods_environment.json')

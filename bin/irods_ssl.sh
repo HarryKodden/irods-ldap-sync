@@ -31,7 +31,13 @@ EOF
 )
 
 client_env=$(cat <<EOF
-export irodsClientServerPolicy='CS_NEG_REQUIRE';
+export irodsDefaultHashScheme=SHA256;
+export irodsClientServerPolicy=CS_NEG_REQUIRE;
+export irodsClientServerNegotiation=request_server_negotiation;
+export irodsEncryptionAlgorithm=AES-256-CBC;
+export irodsEncryptionKeySize=32;
+export irodsEncryptionNumHashRounds=16;
+export irodsEncryptionSaltSize=8;
 export irodsSSLCACertificateFile=/etc/ssl/certs/irods.crt;
 export irodsSSLVerifyServer=cert;
 EOF
@@ -43,8 +49,9 @@ docker exec my-irods-icat su - irods -c "iRODS/irodsctl restart"
 
 # Prepare iCommand Client...
 
-docker cp my-irods-icat:/etc/ssl/certs/irods.crt /tmp/irods.crt
-docker cp /tmp/irods.crt my-irods-icommands:/etc/ssl/certs/irods.crt
+docker cp my-irods-icat:/etc/ssl/certs/irods.crt ./etc/irods/irods.crt
+docker cp ./etc/irods/irods.crt my-irods-icommands:/etc/ssl/certs/irods.crt
 
-docker exec my-irods-icommands su - rods -c "echo \"$client_env\" >> ~/.profile"
+docker exec my-irods-icommands  bash -c "echo \"$client_env\" > /etc/profile.d/irods.sh"
 
+# Done !
