@@ -489,15 +489,15 @@ class iRODS(object):
 
         try:
             env_file = os.environ.get('IRODS_JSON', DEFAULT_IRODS_ENVIRONMENT_FILE)
-            logger.debug("Trying: {}".format(env_file))
+            logger.error("Trying: {}".format(env_file))
 
             #   env_file = os.path.expanduser('~/.irods/irods_environment.json')
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
             ssl_settings = {'ssl_context': ssl_context}
 
-            self.session = iRODSSession(irods_env_file=env_file, **ssl_settings)
-        except Exception:
-            logger.debug("Not using environment, using host connect instead")
+            self.session = iRODSSession(irods_env_file=env_file, password=IRODS_PASS, **ssl_settings)
+        except Exception as e:
+            logger.error("Not using environment, using host connect instead ({})".format(str(e)))
             try:
                 self.session = iRODSSession(
                     host=IRODS_HOST,
