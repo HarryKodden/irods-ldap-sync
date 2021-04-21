@@ -26,6 +26,8 @@ IRODS_HOST = None
 IRODS_PORT = None
 IRODS_USER = None
 IRODS_ZONE = None
+IRODS_CERT = None
+IRODS_JSON = {}
 
 json_file = os.environ.get('IRODS_JSON', None)
 if json_file:
@@ -33,12 +35,12 @@ if json_file:
         logger.info("Read JSON environment: {}".format(json_file))
 
         with open(json_file) as f:
-            data = json.load(f)
+            IRODS_JSON = json.load(f)
 
-            IRODS_HOST = data.get('irods_host', None)
-            IRODS_PORT = data.get('irods_port', None)
-            IRODS_USER = data.get('irods_user_name', None)
-            IRODS_ZONE = data.get('irods_zone_name', None)
+            IRODS_HOST = IRODS_JSON.get('irods_host', None)
+            IRODS_PORT = IRODS_JSON.get('irods_port', None)
+            IRODS_USER = IRODS_JSON.get('irods_user_name', None)
+            IRODS_ZONE = IRODS_JSON.get('irods_zone_name', None)
 
     except Exception as e:
         logger.info("Error during reading JSON environment: {}".format(str(e)))
@@ -487,30 +489,34 @@ class iRODS(object):
             self.session = irods_session
             return
 
+        session_options = {}
+
+        if IRODS_JSON:
+            IRODS_CERT = IRODS_JSON.get("irods_ssl_ca_certificate_file", None)
+
+            if IRODS_CERT:
+                ssl_context = ssl.create_default_context(cafile=IRODS_CERT)
+                ssl_context.options &= ~ssl.OP_NO_SSLv3
+                ssl_context.set_ciphers("SRP-RSA-AES-256-CBC-SHA")                
+                
+                session_options.update(ssl_context=ssl_context, **IRODS_JSON)
+
+        logger.error("Session options: {}".format(session_options))
+
         try:
-            env_file = os.environ.get('IRODS_JSON', DEFAULT_IRODS_ENVIRONMENT_FILE)
-            logger.error("Trying: {}".format(env_file))
-
-            #   env_file = os.path.expanduser('~/.irods/irods_environment.json')
-            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
-            ssl_settings = {'ssl_context': ssl_context}
-
-            self.session = iRODSSession(irods_env_file=env_file, password=IRODS_PASS, **ssl_settings)
+            self.session = iRODSSession(
+                host=IRODS_HOST,
+                port=IRODS_PORT,
+                user=IRODS_USER,
+                password=IRODS_PASS,
+                zone=IRODS_ZONE,
+                **session_options
+            )
         except Exception as e:
-            logger.error("Not using environment, using host connect instead ({})".format(str(e)))
-            try:
-                self.session = iRODSSession(
-                    host=IRODS_HOST,
-                    port=IRODS_PORT,
-                    user=IRODS_USER,
-                    password=IRODS_PASS,
-                    zone=IRODS_ZONE
-                )
-            except Exception as e:
-                raise Exception(
-                    "Problem connecting to IRODS {} error: {}".
-                        format(os.environ['IRODS_HOST'], str(e))
-                )
+            raise Exception(
+                "Problem connecting to IRODS {} error: {}".
+                    format(os.environ['IRODS_HOST'], str(e))
+            )
 
         irods_session = self.session
 
