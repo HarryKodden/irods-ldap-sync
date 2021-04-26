@@ -19,7 +19,7 @@ services:
     build:
       context: irods
       args:
-        IRODS_VERSION: "4.2.8"
+        IRODS_VERSION: ${IRODS_VERSION}
     hostname: icat
     links: 
       - database
@@ -57,7 +57,7 @@ services:
     build:
       context: irods
       args:
-        IRODS_VERSION: "4.2.8"
+        IRODS_VERSION: ${IRODS_VERSION}
     hostname: icommands
     links: 
       - icat
