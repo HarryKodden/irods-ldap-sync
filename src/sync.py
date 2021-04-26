@@ -26,7 +26,7 @@ IRODS_HOST = None
 IRODS_PORT = None
 IRODS_USER = None
 IRODS_ZONE = None
-IRODS_CERT = None
+IRODS_CERT = os.environ.get('IRODS_CERT', None)
 IRODS_JSON = {}
 
 json_file = os.environ.get('IRODS_JSON', None)
@@ -491,15 +491,16 @@ class iRODS(object):
 
         session_options = {}
 
+        global IRODS_CERT
+
         if IRODS_JSON:
-            IRODS_CERT = IRODS_JSON.get("irods_ssl_ca_certificate_file", None)
+            if not IRODS_CERT:
+                IRODS_CERT = IRODS_JSON.get("irods_ssl_ca_certificate_file", None)
 
             if IRODS_CERT:
                 ssl_context = ssl.create_default_context(cafile=IRODS_CERT)
-                ssl_context.options &= ~ssl.OP_NO_SSLv3
-                ssl_context.set_ciphers("SRP-RSA-AES-256-CBC-SHA")                
                 
-                session_options.update(ssl_context=ssl_context, **IRODS_JSON)
+            session_options.update(ssl_context=ssl_context, **IRODS_JSON)
 
         logger.error("Session options: {}".format(session_options))
 

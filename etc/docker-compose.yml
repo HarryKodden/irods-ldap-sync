@@ -1,0 +1,98 @@
+version: "3"
+
+services:
+
+  database:
+    build: database
+    restart: always
+    volumes:
+      - irods_database:/var/lib/postgresql/
+      - ./database/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    environment:
+      MY_DB: $IRODS_DB_NAME
+      MY_USER: $IRODS_DB_USER
+      MY_PASSWORD: $IRODS_DB_PASS
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+ 
+  icat:
+    build:
+      context: irods
+      args:
+        IRODS_VERSION: "4.2.8"
+    hostname: icat
+    links: 
+      - database
+    ports:
+      - "$IRODS_SERVICE_PORT:$IRODS_SERVICE_PORT"
+    environment:
+      DATABASE_TYPE: "postgres"
+      IRODS_DB_HOST: database
+      IRODS_DB_NAME: $IRODS_DB_NAME
+      IRODS_DB_PORT: $IRODS_DB_PORT
+      IRODS_DB_USER: $IRODS_DB_USER
+      IRODS_DB_PASS: $IRODS_DB_PASS
+      IRODS_RANGE_FROM: $IRODS_RANGE_FROM
+      IRODS_RANGE_TILL: $IRODS_RANGE_TILL
+      IRODS_HOST: icat
+      IRODS_ZONE: $IRODS_ZONE
+      IRODS_USER: $IRODS_USER
+      IRODS_PASS: $IRODS_PASS
+      IRODS_SERVICE_NAME: $IRODS_SERVICE_NAME
+      IRODS_SERVICE_GROUP: $IRODS_SERVICE_GROUP
+      IRODS_SERVICE_PORT: $IRODS_SERVICE_PORT
+      IRODS_CONTROL_PORT: $IRODS_CONTROL_PORT
+    volumes:
+      - ./irods/entrypoint.sh:/usr/local/bin/entrypoint.sh
+      - ./irods/genresp.sh:/usr/local/bin/genresp.sh
+      - ./irods_environment:/usr/local/etc/irods
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo 'Starting irods...'
+        /bin/bash /usr/local/bin/entrypoint.sh
+    
+  icommands:
+    build:
+      context: irods
+      args:
+        IRODS_VERSION: "4.2.8"
+    hostname: icommands
+    links: 
+      - icat
+    ports:
+      - "2222:22"
+    environment:
+      IRODS_HOST: icat
+      IRODS_PORT: ${IRODS_SERVICE_PORT:-1247}
+      IRODS_ZONE: ${IRODS_ZONE:-tempZone}
+      IRODS_USER: ${IRODS_USER:-rods}
+      IRODS_PASS: ${IRODS_PASS:-password}
+    volumes:
+      - ~/.ssh/id_rsa.pub:/tmp/authorized_keys
+      - ./ssl:/etc/irods/ssl
+      - ./irods_environment:/usr/local/etc/irods
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo 'Starting icommands...'
+        apt-get update -y
+        apt-get install -y openssh-server
+        mkdir /var/run/sshd
+        sed -ie 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/g' /etc/ssh/sshd_config
+        sed -ie 's/#AuthorizedKeysFile/AuthorizedKeysFile/g' /etc/ssh/sshd_config
+        echo "sshd: ALL" >> /etc/hosts.allow
+        useradd -m ${IRODS_USER} --shell /bin/bash
+        usermod -aG sudo ${IRODS_USER}
+        echo "${IRODS_USER} ALL=NOPASSWD: ALL" >> /etc/sudoers
+        su - ${IRODS_USER} -c "ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ''"
+        su - ${IRODS_USER} -c "cat /tmp/authorized_keys > ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys"
+        su - ${IRODS_USER} -c "mkdir .irods; cat /usr/local/etc/irods/irods_envrionment.json > .irods/irods_environment.json"
+        /usr/sbin/sshd -D
+
+    
+volumes:
+  irods_database:
+    driver: local
