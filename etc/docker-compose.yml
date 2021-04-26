@@ -2,6 +2,20 @@ version: "3"
 
 services:
 
+  ldap:
+    image: osixia/openldap
+    environment: 
+      LDAP_DOMAIN: "${LDAP_DOMAIN:-example.org}"
+      LDAP_BASE_DN: "${LDAP_BASE_DN:-dc=example,dc=org}"
+      LDAP_ADMIN_PASSWORD: "${LDAP_ADMIN_PASSWORD:-changeme}"
+      LDAP_CONFIG_PASSWORD: "${LDAP_CONFIG_PASSWORD:-changeme}"
+      LDAP_TLS: "true"
+    ports:
+      - 1389:389
+    volumes:
+      - ./ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    command: --loglevel debug --copy-service
+
   database:
     build: database
     restart: always
@@ -71,7 +85,6 @@ services:
       IRODS_PASS: ${IRODS_PASS:-password}
     volumes:
       - ~/.ssh/id_rsa.pub:/tmp/authorized_keys
-      - ./ssl:/etc/irods/ssl
       - ./irods_environment:/usr/local/etc/irods
     command:
       - /bin/sh
@@ -92,7 +105,6 @@ services:
         su - ${IRODS_USER} -c "mkdir .irods; cat /usr/local/etc/irods/irods_envrionment.json > .irods/irods_environment.json"
         /usr/sbin/sshd -D
 
-    
 volumes:
   irods_database:
     driver: local

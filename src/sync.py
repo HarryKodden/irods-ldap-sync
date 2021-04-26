@@ -22,10 +22,10 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger('root')
 
-IRODS_HOST = None
-IRODS_PORT = None
-IRODS_USER = None
-IRODS_ZONE = None
+IRODS_HOST = 'localhost'
+IRODS_PORT = 1247
+IRODS_USER = 'irods'
+IRODS_ZONE = 'tempZone'
 IRODS_CERT = os.environ.get('IRODS_CERT', None)
 IRODS_JSON = {}
 
@@ -46,18 +46,10 @@ if json_file:
         logger.info("Error during reading JSON environment: {}".format(str(e)))
         exit(0)
 
-if not IRODS_HOST:
-    IRODS_HOST = os.environ.get('IRODS_HOST', 'localhost')
-
-if not IRODS_ZONE:
-    IRODS_ZONE = os.environ.get('IRODS_ZONE', 'tempZone')
-
-if not IRODS_PORT:
-    IRODS_PORT = os.environ.get('IRODS_PORT', 1247)
-
-if not IRODS_USER:
-    IRODS_USER = os.environ.get('IRODS_USER', '')
-
+IRODS_HOST = os.environ.get('IRODS_HOST', IRODS_HOST)
+IRODS_ZONE = os.environ.get('IRODS_ZONE', IRODS_ZONE)
+IRODS_PORT = os.environ.get('IRODS_PORT', IRODS_PORT)
+IRODS_USER = os.environ.get('IRODS_USER', IRODS_USER)
 IRODS_PASS = os.environ.get('IRODS_PASS', '')
 
 DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
@@ -502,7 +494,7 @@ class iRODS(object):
                 
             session_options.update(ssl_context=ssl_context, **IRODS_JSON)
 
-        logger.error("Session options: {}".format(session_options))
+        logger.debug("Session options: {}".format(session_options))
 
         try:
             self.session = iRODSSession(

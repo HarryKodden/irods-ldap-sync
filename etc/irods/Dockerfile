@@ -22,4 +22,4 @@ RUN wget -qO - https://packages.irods.org/irods-signing-key.asc | apt-key add - 
     irods-icommands=$IRODS_VERSION  \
     irods-server=$IRODS_VERSION
 
-CMD ["/bin/bash", "sleep", "infinity"]
+CMD ["/bin/bash", "-c", "sleep infinity"]
