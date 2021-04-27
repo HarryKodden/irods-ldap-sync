@@ -81,7 +81,7 @@ services:
       IRODS_HOST: icat
       IRODS_PORT: ${IRODS_SERVICE_PORT:-1247}
       IRODS_ZONE: ${IRODS_ZONE:-tempZone}
-      IRODS_USER: ${IRODS_USER:-rods}
+      IRODS_USER: ${IRODS_USER:-irods}
       IRODS_PASS: ${IRODS_PASS:-password}
     volumes:
       - ~/.ssh/id_rsa.pub:/tmp/authorized_keys

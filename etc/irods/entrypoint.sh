@@ -32,11 +32,6 @@ if [ ! -f irods.crt ]; then
   echo 'DNS.1 = '$IRODS_HOST; \
   echo 'DNS.2 = localhost'; \
   echo 'IP.1 = 127.0.0.1')  
-
-# openssl req -new -key irods.key -out irods.csr \
-#   -subj "/C=NL/L=Amsterdam/O=SURF/OU=IT Department/CN=$IRODS_HOST"
-# openssl x509 -req -days 365 -in irods.csr -signkey irods.key -out irods.crt
-#  rm irods.csr
 fi
 
 if [ ! -f dhparams.pem ]; then

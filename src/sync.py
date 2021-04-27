@@ -22,10 +22,12 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger('root')
 
+# Start with some defaults...
 IRODS_HOST = 'localhost'
 IRODS_PORT = 1247
 IRODS_USER = 'irods'
 IRODS_ZONE = 'tempZone'
+
 IRODS_CERT = os.environ.get('IRODS_CERT', None)
 IRODS_JSON = {}
 
@@ -50,6 +52,7 @@ IRODS_HOST = os.environ.get('IRODS_HOST', IRODS_HOST)
 IRODS_ZONE = os.environ.get('IRODS_ZONE', IRODS_ZONE)
 IRODS_PORT = os.environ.get('IRODS_PORT', IRODS_PORT)
 IRODS_USER = os.environ.get('IRODS_USER', IRODS_USER)
+
 IRODS_PASS = os.environ.get('IRODS_PASS', '')
 
 DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
@@ -490,9 +493,11 @@ class iRODS(object):
                 IRODS_CERT = IRODS_JSON.get("irods_ssl_ca_certificate_file", None)
 
             if IRODS_CERT:
-                ssl_context = ssl.create_default_context(cafile=IRODS_CERT)
-                
-            session_options.update(ssl_context=ssl_context, **IRODS_JSON)
+                session_options.update(
+                    ssl_context = ssl.create_default_context(cafile=IRODS_CERT)
+                )   
+
+            session_options.update(**IRODS_JSON)
 
         logger.debug("Session options: {}".format(session_options))
 

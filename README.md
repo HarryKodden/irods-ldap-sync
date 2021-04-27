@@ -32,16 +32,12 @@ You have multiple run options:
 
 Running on localhost: (docker is required !)
 
-1. start local LDAP container, (data is loaded during start as well)
+All required services are defined in the docker-compose.yml file in etc directory.
+These services can easily be started by:
 
 ```
-./bin/ldap_start.sh
+(cd etc; docker-compose up -d)
 ```
-2. start local iRODS container
-```
-./bin/irods_start.sh
-```
-
 ## Gitpod
 
 This repository is fully prepared to operate on GitPod. You can launch the workspace on GitPod. During initialization of the workspace, docker is prepared as well. Both LDAP and iRODS containers are instantiated.
@@ -70,6 +66,9 @@ LDAP_CONFIG_PASSWORD|config|The LDAP Config Password
 LDAP_DOMAIN|"example.org"|LDAP Domain
 LDAP_BASE_DN|"dc=example,dc=org"|LDAP Base DN
 LDAP_BIND_DN|"cn=admin,dc=example,dc=org"|LDAP Bind DN
+IRODS_VERSION |The requested iRODS version, default: 4.2.8
+IRODS_JSON |The **irods_environment.json** file
+IRODS_CERT |The irods CA Certificate for SSL interaction
 IRODS_HOST|localhost|The iRODS host to connect to
 IRDDS_PORT|1247|The iRODS service port to connect to
 IRODS_USER|rods|iRODS administrator user
