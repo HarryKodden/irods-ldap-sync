@@ -56,17 +56,11 @@ jobs:
 
     - name: Start LDAP & iRODS...
       run: |
-        bin/ldap_start.sh;
-        bin/irods_start.sh;
+        (cd etc && docker-compose up -d)
 
-    - name: Check running iRODS...
+    - name: Wait for iRODS....
       run: |
-        # icat container needs some time for initialization...
-        sleep 10;
-        docker logs my-irods-icat;
-        # icommands container needs some (more) time for initialization...
-        sleep 20;
-        docker logs my-irods-icommands;
+        sleep 30
 
     # Setup tmate session
     #- name: Setup tmate session
@@ -74,7 +68,6 @@ jobs:
 
     - name: Run pytest...
       run: |
-        cat .env;
         pytest;
       env:
         LOG_LEVEL: DEBUG

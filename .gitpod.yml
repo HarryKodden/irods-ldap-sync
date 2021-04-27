@@ -26,12 +26,6 @@ tasks:
 
   - name: docker
     command: sudo docker-up;
-  - name: services
-    command: |
-      sleep 5;
-      bin/ldap_start.sh;
-      bin/irods_start.sh;
-      exit;
       
 vscode:
   extensions:
