@@ -1,4 +1,8 @@
-.env
+./.env
 .venv
 .vscode/*
+.coverage
+.coveralls.yml
 __pycache__
+sync_policies.pdf
+etc/irods_environment

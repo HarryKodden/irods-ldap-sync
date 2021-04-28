@@ -23,7 +23,7 @@ class BaseTest(TestCase):
     irods_conf = {
         'irods_host': os.environ.get("IRODS_HOST", "localhost"),
         'irods_port': os.environ.get("IRODS_PORT", "1247"),
-        'irods_user': os.environ.get("IRODS_USER", "rods"),
+        'irods_user': os.environ.get("IRODS_USER", "irods"),
         'irods_pass': os.environ.get("IRODS_PASS", "password"),
         'irods_zone': os.environ.get("IRODS_ZONE", "tempZone")
     }
