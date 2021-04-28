@@ -502,18 +502,36 @@ class iRODS(object):
         logger.debug("Session options: {}".format(session_options))
 
         try:
-            self.session = iRODSSession(
-                host=IRODS_HOST,
-                port=IRODS_PORT,
-                user=IRODS_USER,
-                password=IRODS_PASS,
-                zone=IRODS_ZONE,
-                **session_options
+            if not IRODS_PASS:
+                raise Exception("iRODS environment parameter 'IRODS_PASS' is empty")
+            else:
+                self.session = iRODSSession(
+                    host=IRODS_HOST,
+                    port=IRODS_PORT,
+                    user=IRODS_USER,
+                    password=IRODS_PASS,
+                    zone=IRODS_ZONE,
+                    **session_options
+                )
+        except Exception as e:
+            irods_host = None
+            if IRODS_HOST in os.environ:
+                irods_host = os.environ['IRODS_HOST']
+            logger.error("Problem connecting to IRODS HOST:{}, error: {}".
+                         format(irods_host, str(e))
             )
+            logger.debug("Going to try the irods default environment configuration")
+            env_file = os.path.expanduser(DEFAULT_IRODS_ENVIRONMENT_FILE)
+            irods_ssl_ca_certificate_file = None
+            if IRODS_CERT:
+                irods_ssl_ca_certificate_file = IRODS_CERT
+            ssl_context = ssl.create_default_context(cafile=irods_ssl_ca_certificate_file)
+            ssl_settings = {'ssl_context': ssl_context}
+            self.session = iRODSSession(irods_env_file=env_file, **ssl_settings)
         except Exception as e:
             raise Exception(
-                "Problem connecting to IRODS {} error: {}".
-                    format(os.environ['IRODS_HOST'], str(e))
+                "Problem loading {}, error: {}".
+                format(DEFAULT_IRODS_ENVIRONMENT_FILE, str(e))
             )
 
         irods_session = self.session
