@@ -28,34 +28,33 @@ IRODS_PORT = 1247
 IRODS_USER = 'irods'
 IRODS_ZONE = 'tempZone'
 
-IRODS_CERT = os.environ.get('IRODS_CERT', None)
+DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
+
 IRODS_JSON = {}
 
-json_file = os.environ.get('IRODS_JSON', None)
-if json_file:
-    try:
-        logger.info("Read JSON environment: {}".format(json_file))
+try:
+    env_file = os.environ.get('IRODS_JSON', os.path.expanduser(DEFAULT_IRODS_ENVIRONMENT_FILE))
+    
+    logger.info("Trying to read environment file: '{}'".format(env_file))
 
-        with open(json_file) as f:
-            IRODS_JSON = json.load(f)
+    with open(env_file) as f:
+        IRODS_JSON = json.load(f)
 
-            IRODS_HOST = IRODS_JSON.get('irods_host', None)
-            IRODS_PORT = IRODS_JSON.get('irods_port', None)
-            IRODS_USER = IRODS_JSON.get('irods_user_name', None)
-            IRODS_ZONE = IRODS_JSON.get('irods_zone_name', None)
+        IRODS_HOST = IRODS_JSON.pop('irods_host', None)
+        IRODS_PORT = IRODS_JSON.pop('irods_port', None)
+        IRODS_USER = IRODS_JSON.pop('irods_user_name', None)
+        IRODS_ZONE = IRODS_JSON.pop('irods_zone_name', None)
+        IRODS_CERT = IRODS_JSON.pop('irods_ssl_ca_certificate_file', None)
 
-    except Exception as e:
-        logger.info("Error during reading JSON environment: {}".format(str(e)))
-        exit(0)
+except Exception:
+    pass
 
 IRODS_HOST = os.environ.get('IRODS_HOST', IRODS_HOST)
 IRODS_ZONE = os.environ.get('IRODS_ZONE', IRODS_ZONE)
 IRODS_PORT = os.environ.get('IRODS_PORT', IRODS_PORT)
 IRODS_USER = os.environ.get('IRODS_USER', IRODS_USER)
-
+IRODS_CERT = os.environ.get('IRODS_CERT', IRODS_CERT)
 IRODS_PASS = os.environ.get('IRODS_PASS', '')
-
-DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
 
 SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
 SSH_PORT = os.environ.get('SSH_PORT', 2222)
@@ -486,18 +485,12 @@ class iRODS(object):
 
         session_options = {}
 
-        global IRODS_CERT
+        if IRODS_CERT:
+            session_options.update(
+                ssl_context = ssl.create_default_context(cafile=IRODS_CERT)
+            )   
 
-        if IRODS_JSON:
-            if not IRODS_CERT:
-                IRODS_CERT = IRODS_JSON.get("irods_ssl_ca_certificate_file", None)
-
-            if IRODS_CERT:
-                session_options.update(
-                    ssl_context = ssl.create_default_context(cafile=IRODS_CERT)
-                )   
-
-            session_options.update(**IRODS_JSON)
+        session_options.update(**IRODS_JSON)
 
         logger.debug("Session options: {}".format(session_options))
 
@@ -506,8 +499,8 @@ class iRODS(object):
                 host=IRODS_HOST,
                 port=IRODS_PORT,
                 user=IRODS_USER,
-                password=IRODS_PASS,
                 zone=IRODS_ZONE,
+                password=IRODS_PASS,
                 **session_options
             )
         except Exception as e:
