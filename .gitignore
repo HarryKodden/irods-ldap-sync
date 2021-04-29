@@ -6,3 +6,5 @@
 __pycache__
 sync_policies.pdf
 etc/irods_environment
+.jovianrc
+irods.crt

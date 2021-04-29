@@ -71,12 +71,6 @@ if [ "$checkirods" == "" ]; then
     sed -i '6i    "irods_ssl_verify_server": "none", '                              /var/lib/irods/.irods/irods_environment.json
 #   sed -i '7i    "irods_authentication_scheme": "PAM", '                           /var/lib/irods/.irods/irods_environment.json
 
-    # make System Account for iRODS Admin
-    pass=`echo $IRODS_PASS | openssl passwd -crypt -noverify -stdin`
-    useradd --password $pass --shell /bin/false --no-create-home $IRODS_USER
-    adduser $IRODS_USER sudo
-    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-
     service irods restart
 else
     echo "Already installed. Launching..."
@@ -102,4 +96,4 @@ cp /etc/irods/ssl/irods.crt /usr/local/etc/irods
 
 echo "iRODS is ready"
 
-sleep infinity
+/usr/sbin/sshd -D

@@ -41,7 +41,7 @@ jobs:
         IRODS_CERT: etc/irods_environment/irods.crt
         IRODS_HOST: localhost
         IRODS_PORT: 1247
-        IRODS_USER: irods
+        IRODS_USER: rods
         IRODS_PASS: password
         IRODS_ZONE: tempZone
         SSH_HOST: localhost

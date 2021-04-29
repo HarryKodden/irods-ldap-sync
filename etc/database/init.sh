@@ -11,8 +11,6 @@ echo "" > $conf
 # Enable to allow health checks
 echo "hostnossl  $POSTGRES_USER all $net    md5" >> $conf
 echo "host       all            all $net    md5">> $conf
-echo "host       all            all ::1/128 md5" >> $conf
-echo "hostnossl  all            postgres 127.0.0.1/32 trust" >> $conf
 
 echo "hba_file = '$conf'" >> /var/lib/postgresql/data/postgresql.conf
 
