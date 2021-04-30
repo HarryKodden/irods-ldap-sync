@@ -14,6 +14,8 @@ from irods.session import iRODSSession
 from irods.column import Criterion
 from irods.models import User
 from irods.access import iRODSAccess
+from irods.password_obfuscation import encode
+from irods import NATIVE_AUTH_SCHEME
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -33,18 +35,19 @@ DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
 IRODS_JSON = {}
 
 try:
-    env_file = os.environ.get('IRODS_JSON', os.path.expanduser(DEFAULT_IRODS_ENVIRONMENT_FILE))
+    fname = os.environ.get('IRODS_JSON', os.path.expanduser(DEFAULT_IRODS_ENVIRONMENT_FILE))
     
-    logger.info("Trying to read environment file: '{}'".format(env_file))
+    logger.info("Trying to read environment file: '{}'".format(fname))
 
-    with open(env_file) as f:
+    with open(fname) as f:
         IRODS_JSON = json.load(f)
 
         IRODS_HOST = IRODS_JSON.pop('irods_host', None)
         IRODS_PORT = IRODS_JSON.pop('irods_port', None)
         IRODS_USER = IRODS_JSON.pop('irods_user_name', None)
         IRODS_ZONE = IRODS_JSON.pop('irods_zone_name', None)
-        IRODS_CERT = IRODS_JSON.pop('irods_ssl_ca_certificate_file', None)
+        
+        IRODS_CERT = IRODS_JSON.get('irods_ssl_ca_certificate_file', None)
 
 except Exception:
     pass
@@ -54,7 +57,14 @@ IRODS_ZONE = os.environ.get('IRODS_ZONE', IRODS_ZONE)
 IRODS_PORT = os.environ.get('IRODS_PORT', IRODS_PORT)
 IRODS_USER = os.environ.get('IRODS_USER', IRODS_USER)
 IRODS_CERT = os.environ.get('IRODS_CERT', IRODS_CERT)
-IRODS_PASS = os.environ.get('IRODS_PASS', '')
+
+IRODS_PASS = os.environ.get('IRODS_PASS', None)
+if not IRODS_PASS:
+    try:
+        IRODS_PASS = iRODSSession.get_irods_password(** IRODS_JSON)
+    except:
+        logger.error("No iRODS Password provided, can not proceed.")
+        exit(-1)
 
 SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
 SSH_PORT = os.environ.get('SSH_PORT', 2222)
@@ -330,12 +340,10 @@ class USER:
                     "irods_user_name": "{}".format(self.name),
                     "irods_zone_name": "{}".format(IRODS_ZONE),
                     "irods_authentication_scheme": "PAM_INTERACTIVE",
-                    "schema_version": "v3",
-                    "irods_ssl_ca_certificate_file": "/etc/irods/ssl/irods.crt",
-                    "irods_ssl_verify_server": "none"
+                    **IRODS_JSON
                 }, indent=4).replace('"', '\\""')
 
-            ssh('sudo su - {} -c "echo -e \'{}\' > {}"'.format(
+            ssh('sudo su - {} -c "echo \'{}\' > {}"'.format(
                     self.name, env, DEFAULT_IRODS_ENVIRONMENT_FILE
                     )
                 )
@@ -347,7 +355,7 @@ class USER:
             irodsZone {IRODS_ZONE}
             """
 
-            ssh('sudo su - {} -c "echo -e \'{}\' > .irods/.irodsEnv"'.format(
+            ssh('sudo su - {} -c "echo \'{}\' > .irods/.irodsEnv"'.format(
                     self.name, env
                     )
                 )

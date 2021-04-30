@@ -89,7 +89,8 @@ cat <<EOF > /usr/local/etc/irods/irods_environment.json
     "irods_encryption_key_size": 32,
     "irods_encryption_num_hash_rounds": 16,
     "irods_encryption_salt_size": 8,
-    "irods_ssl_ca_certificate_file": "/usr/local/etc/irods/irods.crt"
+    "irods_ssl_ca_certificate_file": "/usr/local/etc/irods/irods.crt",
+    "irods_ssl_verify_server": "cert"
 }
 EOF
 cp /etc/irods/ssl/irods.crt /usr/local/etc/irods    

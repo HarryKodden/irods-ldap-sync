@@ -35,4 +35,11 @@ RUN mkdir /var/run/sshd \
     && su - ${IRODS_USER} -c "touch ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" \
     && su - ${IRODS_USER} -c "mkdir .irods; sudo ln -s /usr/local/etc/irods/irods_environment.json .irods/irods_environment.json"
 
+# TO DO: PAM-INTERACTIVE
+#RUN git clone https://github.com/irods/externals.git
+#RUN cd externals \
+#    ./install_prerequisites.py 
+
+#RUN apt-get install -y python-PAM libssl-dev libpam-dev
+
 CMD ["/usr/sbin/sshd", "-D"]
