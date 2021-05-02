@@ -46,8 +46,6 @@ try:
         IRODS_PORT = IRODS_JSON.pop('irods_port', None)
         IRODS_USER = IRODS_JSON.pop('irods_user_name', None)
         IRODS_ZONE = IRODS_JSON.pop('irods_zone_name', None)
-        
-        IRODS_CERT = IRODS_JSON.get('irods_ssl_ca_certificate_file', None)
 
 except Exception:
     pass
@@ -56,7 +54,8 @@ IRODS_HOST = os.environ.get('IRODS_HOST', IRODS_HOST)
 IRODS_ZONE = os.environ.get('IRODS_ZONE', IRODS_ZONE)
 IRODS_PORT = os.environ.get('IRODS_PORT', IRODS_PORT)
 IRODS_USER = os.environ.get('IRODS_USER', IRODS_USER)
-IRODS_CERT = os.environ.get('IRODS_CERT', IRODS_CERT)
+
+IRODS_CERT = os.environ.get('IRODS_CERT', None)
 
 IRODS_PASS = os.environ.get('IRODS_PASS', None)
 if not IRODS_PASS:
@@ -164,9 +163,10 @@ class Ldap(object):
 
             result = result_set
 
-        except ldap.LDAPError:
+        except ldap.LDAPError as e:
             result = None
-            logger.error("[IRODS] REQUEST: %s\n" % str(e))
+            logger.error("[LDAP] SEARCH: '%s' ERROR: %s\n" % (dn, str(e)))
+            exit(-1)
 
         return result
 
@@ -185,7 +185,7 @@ class Ldap(object):
         ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
 
         for i in self.search(
-                os.environ['LDAP_BASE_DN'],
+                os.environ.get('LDAP_BASE_DN',''),
                 searchFilter="(&(objectClass=inetOrgPerson)({}=*))".format(ldap_user_key),
                 retrieveAttributes=[]):
 
@@ -209,7 +209,7 @@ class Ldap(object):
         ldap_group_key = os.environ.get('LDAP_GROUP_KEY', 'cn')
 
         for i in self.search(
-            os.environ['LDAP_BASE_DN'],
+            os.environ.get('LDAP_BASE_DN',''),
             searchFilter="({})".format(
                     os.environ.get(
                         'LDAP_FILTER', "objectClass=groupOfMembers"
@@ -514,7 +514,7 @@ class iRODS(object):
         except Exception as e:
             raise Exception(
                 "Problem connecting to IRODS {} error: {}".
-                    format(os.environ['IRODS_HOST'], str(e))
+                    format(IRODS_HOST, str(e))
             )
 
         irods_session = self.session
