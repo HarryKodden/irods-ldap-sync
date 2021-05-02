@@ -63,7 +63,7 @@ jobs:
 
     - name: Wait for iRODS....
       run: |
-        sleep 60
+        sleep 120
 
     # Setup tmate session
     # - name: Setup tmate session
