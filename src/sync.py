@@ -14,8 +14,6 @@ from irods.session import iRODSSession
 from irods.column import Criterion
 from irods.models import User
 from irods.access import iRODSAccess
-from irods.password_obfuscation import encode
-from irods import NATIVE_AUTH_SCHEME
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -694,7 +692,7 @@ class iRODS(object):
             try:
                 g.sync(data_salvager)
             except Exception as e:
-                logger.error("Exception during sync group: {}".format(g.name))
+                logger.error("Exception during sync group: {}, error: {}".format(g.name, str(e)))
 
 
 def sync():
