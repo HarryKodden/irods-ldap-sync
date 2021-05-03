@@ -49,8 +49,7 @@ RUN \
     sed -i "s/@IRODS_VERSION@/${IRODS_VERSION}/"  /opt/irods/lib/core/include/irods_version.h
 
 ADD CMakeLists.txt /opt/irods_auth_plugin_pam_interactive
-# TO DO: Need to finish this !
-# RUN cd /opt/irods_auth_plugin_pam_interactive && \
-#    cmake CMakeLists.txt && make && make install
+RUN cd /opt/irods_auth_plugin_pam_interactive && \
+    cmake . && make && make install
 
 CMD ["/usr/sbin/sshd", "-D"]

@@ -24,15 +24,19 @@ endmacro()
 
 IRODS_MACRO_CHECK_DEPENDENCY_SET_FULLPATH_ADD_TO_IRODS_PACKAGE_DEPENDENCIES_LIST(CLANG_RUNTIME clang-runtime6.0-0)
 IRODS_MACRO_CHECK_DEPENDENCY_SET_FULLPATH_ADD_TO_IRODS_PACKAGE_DEPENDENCIES_LIST(BOOST boost1.67.0-0)
+IRODS_MACRO_CHECK_DEPENDENCY_SET_FULLPATH_ADD_TO_IRODS_PACKAGE_DEPENDENCIES_LIST(CATCH catch22.3.0-0)
+IRODS_MACRO_CHECK_DEPENDENCY_SET_FULLPATH_ADD_TO_IRODS_PACKAGE_DEPENDENCIES_LIST(JSON json3.7.3-0)
+
 add_compile_options(-std=c++17)
+
+#link_libraries(c++abi)
 
 set(CMAKE_C_COMPILER  /usr/bin/clang-6.0)
 set(CMAKE_CXX_COMPILER  /usr/bin/clang++-6.0)
 
-set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
+set(IRODS_CXX_STANDARD 17)
 
-# set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -stdlib=libc++ -Wl,-z,defs")
-# set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -stdlib=libc++ -Wl,-z,defs")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++17")
 
 add_compile_options(-nostdinc++)
 add_compile_options(-Wall)
@@ -41,16 +45,16 @@ add_compile_options(-Werror)
 add_compile_options(-Wno-unused-parameter)
 add_compile_options(-Wno-unused-function)
 add_compile_options(-fPIC)
+add_compile_options(-Wno-error=return-type)
 
 include_directories(
-  /usr/include/clang/6.0/include/
   /opt/irods/lib/core/include/
   /opt/irods/server/core/include/
   /opt/irods/server/icat/include
   /opt/irods/server/api/include/
   /opt/irods/server/re/include/
   /opt/irods/lib/api/include/
-  /usr/include/c++/7
+  /usr/include/c++/7.5.0
   /usr/include/x86_64-linux-gnu/c++/7/
   )
 
@@ -108,7 +112,7 @@ foreach(TYPE ${IRODS_AUTH_PLUGIN_TYPES})
     ${IRODS_CURRENT_PLUGIN_TARGET}
     PRIVATE
     ${IRODS_EXTERNALS_FULLPATH_BOOST}/include
-    ${IRODS_EXTERNALS_PACKAGE_ROOT}/json3.7.3-0/include
+    ${IRODS_EXTERNALS_FULLPATH_JSON}/include
     ${OPENSSL_INCLUDE_DIR}
     )
 
@@ -173,42 +177,4 @@ target_link_libraries(
   ${IRODS_EXTERNALS_FULLPATH_CLANG_RUNTIME}/lib/libc++abi.so.1
   /usr/lib/libirods_common.so
   ${PAM_LIBRARY}
-)
-
-
-# unit test
-add_executable(
-  run_test
-  ${CMAKE_SOURCE_DIR}/test/run_test.cpp
-  ${CMAKE_SOURCE_DIR}/test/test_util.cpp
-  ${CMAKE_SOURCE_DIR}/test/test_pam.cpp
-  ${CMAKE_SOURCE_DIR}/test/test_message.cpp
-  ${CMAKE_SOURCE_DIR}/src/message.cpp
-  ${CMAKE_SOURCE_DIR}/src/conversation.cpp
-  ${CMAKE_SOURCE_DIR}/src/pam_handshake/pam_conversation.cpp
-  )
-
-target_include_directories(
-  run_test
-  PRIVATE
-  ${IRODS_EXTERNALS_PACKAGE_ROOT}/catch22.3.0-0/include/
-  ${IRODS_EXTERNALS_PACKAGE_ROOT}/json3.7.3-0/include
-  ${IRODS_EXTERNALS_PACKAGE_ROOT}/boost1.67.0-0/include
-  src
-  )
-
-set_property(
-  TARGET
-  run_test
-  PROPERTY
-  CXX_STANDARD
-  ${IRODS_CXX_STANDARD}
-  )
-
-target_link_libraries(run_test
-  ${IRODS_EXTERNALS_FULLPATH_CLANG_RUNTIME}/lib/libc++.so.1
-  ${IRODS_EXTERNALS_FULLPATH_CLANG_RUNTIME}/lib/libc++abi.so.1
-  /usr/lib/libirods_common.so
-  ${PAM_LIBRARY}
-  WhereAmI
 )
