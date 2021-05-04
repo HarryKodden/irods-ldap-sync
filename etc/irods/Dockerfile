@@ -22,7 +22,8 @@ RUN wget -qO - https://packages.irods.org/irods-signing-key.asc | apt-key add - 
     irods-database-plugin-postgres=$IRODS_VERSION \
     irods-runtime=$IRODS_VERSION  \
     irods-icommands=$IRODS_VERSION  \
-    irods-server=$IRODS_VERSION
+    irods-server=$IRODS_VERSION \
+    irods-dev=$IRODS_VERSION
 
 # PREPARE SSHD
 RUN mkdir /var/run/sshd \
@@ -36,20 +37,10 @@ RUN mkdir /var/run/sshd \
     && su - ${IRODS_USER} -c "touch ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" \
     && su - ${IRODS_USER} -c "mkdir .irods; sudo ln -s /usr/local/etc/irods/irods_environment.json .irods/irods_environment.json"
 
-RUN apt-get install -y clang-6.0 cmake python-pam libssl-dev libpam-dev
-ENV CXX=export CXX=/usr/bin/clang++-6.0
-
-RUN cd /opt && git clone https://github.com/irods/irods.git --branch $IRODS_VERSION && git clone https://github.com/stefan-wolfsheimer/irods_auth_plugin_pam_interactive.git
-RUN \
-    cp /opt/irods/lib/core/include/irods_version.h.in /opt/irods/lib/core/include/irods_version.h && \
-    sed -i "s/@IRODS_VERSION_MAJOR@/`echo $IRODS_VERSION | cut -d. -f1`/"  /opt/irods/lib/core/include/irods_version.h && \
-    sed -i "s/@IRODS_VERSION_MINOR@/`echo $IRODS_VERSION | cut -d. -f2`/"  /opt/irods/lib/core/include/irods_version.h && \
-    sed -i "s/@IRODS_VERSION_PATCH@/`echo $IRODS_VERSION | cut -d. -f3`/"  /opt/irods/lib/core/include/irods_version.h && \
-    cp /opt/irods/lib/core/include/rodsVersion.h.in /opt/irods/lib/core/include/rodsVersion.h && \
-    sed -i "s/@IRODS_VERSION@/${IRODS_VERSION}/"  /opt/irods/lib/core/include/irods_version.h
-
-ADD CMakeLists.txt /opt/irods_auth_plugin_pam_interactive
-RUN cd /opt/irods_auth_plugin_pam_interactive && \
+# PREPARE IRODS PLUGIN: PAM_INTERACTIVE
+RUN apt-get install -y cmake gcc g++ python-pam libssl-dev libpam-dev
+RUN cd /opt && git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive && \
+    cd /opt/irods_auth_plugin_pam_interactive && \
     cmake . && make && make install
 
 CMD ["/usr/sbin/sshd", "-D"]
