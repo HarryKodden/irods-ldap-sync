@@ -71,7 +71,7 @@ if [ "$checkirods" == "" ]; then
     sed -i '6i    "irods_ssl_verify_server": "none", '                              /var/lib/irods/.irods/irods_environment.json
 #   sed -i '7i    "irods_authentication_scheme": "PAM", '                           /var/lib/irods/.irods/irods_environment.json
 
-    service irods restart
+    sudo service irods restart
 else
     echo "Already installed. Launching..."
     sudo service irods start

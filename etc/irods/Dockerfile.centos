@@ -1,0 +1,72 @@
+FROM centos:7
+
+ARG IRODS_VERSION=4.2.8
+ARG IRODS_USER=rods
+
+ENV IRODS_USER "${IRODS_USER}"
+ENV IRODS_VERSION "${IRODS_VERSION}"
+
+ENV TERM xterm-256color
+ENV DEBIAN_FRONTEND=noninteractive
+ENV IRODS_VERSION=$IRODS_VERSION
+
+RUN yum install -y epel-release wget
+RUN yum install -y yum-plugin-priorities
+
+RUN rpm --import https://packages.irods.org/irods-signing-key.asc
+RUN wget -qO - https://packages.irods.org/renci-irods.yum.repo | tee /etc/yum.repos.d/renci-irods.yum.repo
+
+RUN yum install -y irods-devel-${IRODS_VERSION} \
+                   irods-database-plugin-postgres-${IRODS_VERSION} \
+                   irods-icommands%VERSION-${IRODS_VERSION} \
+                   irods-rule-engine-plugin-audit-amqp-${IRODS_VERSION} \
+                   irods-rule-engine-plugin-python-${IRODS_VERSION} \
+                   irods-runtime-${IRODS_VERSION} \
+                   irods-server-${IRODS_VERSION} && \
+    yum clean all
+
+RUN yum update -y
+
+ADD surf-irods.repo /etc/yum.repos.d/surf-irods.repo
+RUN yum install -y python-pam-module
+RUN yum update -y irods-icommands
+
+RUN yum install -y locales sudo rsyslog cronie
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-clang6.0-0-1.0-1.x86_64.rpm
+RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-cmake3.5.2-0-1.0-1.x86_64.rpm
+RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-jansson2.7-0-1.0-1.x86_64.rpm
+
+RUN yum install -y git openssl-devel pam_devel openssl-devel pam-devel
+RUN yum groupinstall -y 'Development Tools'
+
+# Install irods_auth_plugin_pam_interactive
+RUN cd /opt && ls -l && git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive && \
+    cd /opt/irods_auth_plugin_pam_interactive && \
+    /opt/irods-externals/cmake3.5.2-0/bin/cmake -D IRODS_VERSION=${IRODS_VERSION} . && make && make install && cp pam_handshake_auth_check /usr/sbin
+
+# Install python 3
+RUN yum install -y python3 python3-devel python3-pip
+RUN pip3 install python-pam pyasn1 pyopenssl cryptography==2.2.2 requests
+
+# PREPARE SSHD
+RUN yum install -y openssh-server sudo
+RUN /usr/bin/ssh-keygen -A
+RUN mkdir /var/run/sshd \
+    && sed -ie 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/g' /etc/ssh/sshd_config \
+    && sed -ie 's/#AuthorizedKeysFile/AuthorizedKeysFile/g' /etc/ssh/sshd_config \
+    && echo "sshd: ALL" >> /etc/hosts.allow \
+    && useradd -m ${IRODS_USER} --shell /bin/bash \
+    && usermod -aG wheel ${IRODS_USER} \
+    && echo "${IRODS_USER} ALL=NOPASSWD: ALL" >> /etc/sudoers \
+    && su - ${IRODS_USER} -c "ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ''" \
+    && su - ${IRODS_USER} -c "touch ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" \
+    && su - ${IRODS_USER} -c "mkdir .irods; sudo ln -s /usr/local/etc/irods/irods_environment.json .irods/irods_environment.json"
+
+# Monitoring & Scheduling...
+RUN yum install -y rsyslog cronie
+RUN systemctl enable rsyslog crond
+
+# Finish up !
+CMD ["/usr/sbin/sshd", "-D"]

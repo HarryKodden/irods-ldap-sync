@@ -9,7 +9,7 @@ OUTFILE=$1
 echo "${IRODS_SERVICE_NAME}" > $OUTFILE
 echo "${IRODS_SERVICE_GROUP}" >> $OUTFILE
 echo "1" >> $OUTFILE # 1. provider, 2. consumer
-echo "1" >> $OUTFILE # 1. PostgreSQL ANSI, 2. PostgreSQL Unicode
+echo "" >> $OUTFILE # 1. PostgreSQL ANSI, 2. PostgreSQL Unicode
 echo "${IRODS_DB_HOST}" >> $OUTFILE
 echo "${IRODS_DB_PORT}" >> $OUTFILE
 echo "${IRODS_DB_NAME}" >> $OUTFILE

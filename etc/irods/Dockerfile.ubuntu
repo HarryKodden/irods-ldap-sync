@@ -38,7 +38,7 @@ RUN mkdir /var/run/sshd \
     && su - ${IRODS_USER} -c "mkdir .irods; sudo ln -s /usr/local/etc/irods/irods_environment.json .irods/irods_environment.json"
 
 # PREPARE IRODS PLUGIN: PAM_INTERACTIVE
-RUN apt-get install -y cmake gcc g++ python-pam libssl-dev libpam-dev
+RUN apt-get install -y cmake gcc g++ ilibpam-python python-pam libssl-dev libpam-dev
 RUN cd /opt && git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive && \
     cd /opt/irods_auth_plugin_pam_interactive && \
     cmake . && make && make install

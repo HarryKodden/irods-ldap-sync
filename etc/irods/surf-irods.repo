@@ -1,0 +1,6 @@
+[SURF]
+name=SURF
+baseurl=https://artie.ia.surfsara.nl/artifactory/DMS-RPM-Testing-Public/Centos/7/irods-4.2.8/master
+enabled=1
+gpgcheck=0
+priority=90
