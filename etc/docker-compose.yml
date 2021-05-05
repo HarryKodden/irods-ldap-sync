@@ -65,12 +65,14 @@ services:
       - ./irods/entrypoint.sh:/usr/local/bin/entrypoint.sh
       - ./irods/genresp.sh:/usr/local/bin/genresp.sh
       - ./irods_environment:/usr/local/etc/irods
+      - ./pam_irods.py:/etc/pam.d/pam_irods.py
     command:
       - /bin/sh
       - -c
       - |
         echo 'Starting irods...'
         cat /tmp/authorized_keys >> /home/${IRODS_USER}/.ssh/authorized_keys
+        echo 'auth required pam_python.so /etc/pam.d/pam_irods.py' > /etc/pam.d/irods
         /bin/bash /usr/local/bin/entrypoint.sh
     
   icommands:

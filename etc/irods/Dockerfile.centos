@@ -27,9 +27,9 @@ RUN yum install -y irods-devel-${IRODS_VERSION} \
 
 RUN yum update -y
 
-ADD surf-irods.repo /etc/yum.repos.d/surf-irods.repo
-RUN yum install -y python-pam-module
-RUN yum update -y irods-icommands
+#ADD surf-irods.repo /etc/yum.repos.d/surf-irods.repo
+#RUN yum install -y python-pam-module
+#RUN yum update -y irods-icommands
 
 RUN yum install -y locales sudo rsyslog cronie
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
