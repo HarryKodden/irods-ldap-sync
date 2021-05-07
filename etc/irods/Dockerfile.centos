@@ -27,19 +27,23 @@ RUN yum install -y irods-devel-${IRODS_VERSION} \
 
 RUN yum update -y
 
-ADD surf-irods.repo /etc/yum.repos.d/surf-irods.repo
-RUN yum install -y python-pam-module
-RUN yum update -y irods-icommands
+#ADD surf-irods.repo /etc/yum.repos.d/surf-irods.repo
+#RUN yum install -y python-pam-module
+#RUN yum update -y irods-icommands
 
 RUN yum install -y locales sudo rsyslog cronie
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
 RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-clang6.0-0-1.0-1.x86_64.rpm
 RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-cmake3.5.2-0-1.0-1.x86_64.rpm
-RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-jansson2.7-0-1.0-1.x86_64.rpm
 
 RUN yum install -y git openssl-devel pam_devel openssl-devel pam-devel
 RUN yum groupinstall -y 'Development Tools'
+
+RUN yum install -y which help2man
+RUN cd /tmp && git clone https://github.com/HarryKodden/irods_client_icommands --branch interactive-pam && \
+    cd irods_client_icommands && \
+    mkdir build && cd build && /opt/irods-externals/cmake3.5.2-0/bin/cmake -G "Unix Makefiles" ../ && make
 
 # Install irods_auth_plugin_pam_interactive
 RUN cd /opt && ls -l && git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive && \
