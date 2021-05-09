@@ -23,9 +23,6 @@ tasks:
       }
       EOF
       python -m pip install -r requirements.txt;
-
-  - name: docker
-    command: sudo docker-up;
       
 vscode:
   extensions:

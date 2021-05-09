@@ -10,8 +10,10 @@ ENV TERM xterm-256color
 ENV DEBIAN_FRONTEND=noninteractive
 ENV IRODS_VERSION=$IRODS_VERSION
 
-RUN yum install -y epel-release wget
-RUN yum install -y yum-plugin-priorities
+RUN yum install -y epel-release wget locales sudo rsyslog cronie yum-plugin-priorities openssl-devel pam_devel openssl-devel pam-devel which help2man
+RUN yum groupinstall -y 'Development Tools'
+
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
 RUN rpm --import https://packages.irods.org/irods-signing-key.asc
 RUN wget -qO - https://packages.irods.org/renci-irods.yum.repo | tee /etc/yum.repos.d/renci-irods.yum.repo
@@ -25,30 +27,20 @@ RUN yum install -y irods-devel-${IRODS_VERSION} \
                    irods-server-${IRODS_VERSION} && \
     yum clean all
 
-RUN yum update -y
-
-#ADD surf-irods.repo /etc/yum.repos.d/surf-irods.repo
-#RUN yum install -y python-pam-module
-#RUN yum update -y irods-icommands
-
-RUN yum install -y locales sudo rsyslog cronie
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8
-
+# Install irods development packages
 RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-clang6.0-0-1.0-1.x86_64.rpm
-RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-cmake3.5.2-0-1.0-1.x86_64.rpm
+RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-cmake3.11.4-0-1.0-1.x86_64.rpm
+RUN rpm -ivh https://packages.irods.org/yum/pool/centos7/x86_64/irods-externals-cppzmq4.2.3-0-1.0-1.x86_64.rpm
 
-RUN yum install -y git openssl-devel pam_devel openssl-devel pam-devel
-RUN yum groupinstall -y 'Development Tools'
-
-RUN yum install -y which help2man
+# Install irods_icommands (adjustment for iinit: pam_interactive)
 RUN cd /tmp && git clone https://github.com/HarryKodden/irods_client_icommands --branch interactive-pam && \
     cd irods_client_icommands && \
-    mkdir build && cd build && /opt/irods-externals/cmake3.5.2-0/bin/cmake -G "Unix Makefiles" ../ && make
+    mkdir build && cd build && /opt/irods-externals/cmake*/bin/cmake -G "Unix Makefiles" ../ && make && make install
 
 # Install irods_auth_plugin_pam_interactive
 RUN cd /opt && ls -l && git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive && \
     cd /opt/irods_auth_plugin_pam_interactive && \
-    /opt/irods-externals/cmake3.5.2-0/bin/cmake -D IRODS_VERSION=${IRODS_VERSION} . && make && make install && cp pam_handshake_auth_check /usr/sbin
+    /opt/irods-externals/cmake*/bin/cmake -D IRODS_VERSION=${IRODS_VERSION} . && make && make install && cp pam_handshake_auth_check /usr/sbin
 
 # Install python 3
 RUN yum install -y python3 python3-devel python3-pip
@@ -67,10 +59,6 @@ RUN mkdir /var/run/sshd \
     && su - ${IRODS_USER} -c "ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ''" \
     && su - ${IRODS_USER} -c "touch ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" \
     && su - ${IRODS_USER} -c "mkdir .irods; sudo ln -s /usr/local/etc/irods/irods_environment.json .irods/irods_environment.json"
-
-# Monitoring & Scheduling...
-RUN yum install -y rsyslog cronie
-RUN systemctl enable rsyslog crond
 
 # Finish up !
 CMD ["/usr/sbin/sshd", "-D"]
