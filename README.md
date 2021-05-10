@@ -1,6 +1,5 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/HarryKodden/irods-ldap-sync) ![example workflow name](https://github.com/HarryKodden/irods-ldap-sync/workflows/CI/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main&kill_cache=1)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/HarryKodden/irods-ldap-sync/HEAD)
 
-Slides:
 [![SlideShare](https://public.slidesharecdn.com/v2/images/logo/slideshare-162x41.png?dcfe052212)](https://www.slideshare.net/HarryKodden/sram-irods)
 
 # irods-ldap-sync
