@@ -1,3 +1,7 @@
+FROM ubuntu:18.04 as bionic
+
+RUN apt-get update && apt-get -y install libpam-python
+
 FROM centos:7
 
 ARG IRODS_VERSION=4.2.8
@@ -9,6 +13,8 @@ ENV IRODS_VERSION "${IRODS_VERSION}"
 ENV TERM xterm-256color
 ENV DEBIAN_FRONTEND=noninteractive
 ENV IRODS_VERSION=$IRODS_VERSION
+
+COPY --from=bionic /lib/x86_64-linux-gnu/security/pam_python.so /usr/lib64/security/pam_python.so
 
 RUN yum install -y epel-release wget locales sudo rsyslog cronie yum-plugin-priorities openssl-devel pam_devel openssl-devel pam-devel which help2man
 RUN yum groupinstall -y 'Development Tools'
