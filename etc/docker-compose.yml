@@ -33,7 +33,7 @@ services:
   icat:
     build:
       context: irods
-      dockerfile: Dockerfile.centos
+      dockerfile: Dockerfile.ubuntu
       args:
         IRODS_VERSION: ${IRODS_VERSION}
         IRODS_USER: ${IRODS_USER}
@@ -78,7 +78,7 @@ services:
   icommands:
     build:
       context: irods
-      dockerfile: Dockerfile.centos
+      dockerfile: Dockerfile.ubuntu
       args:
         IRODS_VERSION: ${IRODS_VERSION}
         IRODS_USER: ${IRODS_USER}

@@ -1,5 +1,7 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/HarryKodden/irods-ldap-sync) ![example workflow name](https://github.com/HarryKodden/irods-ldap-sync/workflows/CI/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/HarryKodden/irods-ldap-sync/badge.svg?branch=main&kill_cache=1)](https://coveralls.io/github/HarryKodden/irods-ldap-sync?branch=main) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/HarryKodden/irods-ldap-sync/HEAD)
 
+[![SlideShare](https://public.slidesharecdn.com/v2/images/logo/slideshare-162x41.png?dcfe052212)](https://www.slideshare.net/HarryKodden/sram-irods)
+
 # irods-ldap-sync
 
 This repository demonstrates the synchronization of LDAP object into iRODS cataloque.
@@ -24,7 +26,7 @@ Please look in the **.github/workflows/ci.yml** for configuration details
 
 You have multiple run options:
 
-1. Run locally with LDAP and iRODS docker containers.
+1. Run locally with LDAP and iRODS docker containers
 
 2. Connect to existing LDAP and/or iRODS instances
 
@@ -66,9 +68,9 @@ LDAP_CONFIG_PASSWORD|config|The LDAP Config Password
 LDAP_DOMAIN|"example.org"|LDAP Domain
 LDAP_BASE_DN|"dc=example,dc=org"|LDAP Base DN
 LDAP_BIND_DN|"cn=admin,dc=example,dc=org"|LDAP Bind DN
-IRODS_VERSION |The requested iRODS version, default: 4.2.8
-IRODS_JSON |The **irods_environment.json** file
-IRODS_CERT |The irods CA Certificate for SSL interaction
+IRODS_VERSION|4.2.8|The requested iRODS version, default: 4.2.8
+IRODS_JSON |~/.irods/irods_environment.json|The **irods_environment.json** file
+IRODS_CERT |/etc/irods/irods.crt|The irods CA Certificate for SSL interaction
 IRODS_HOST|localhost|The iRODS host to connect to
 IRDDS_PORT|1247|The iRODS service port to connect to
 IRODS_USER|rods|iRODS administrator user
