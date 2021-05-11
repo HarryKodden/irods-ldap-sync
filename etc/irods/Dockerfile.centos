@@ -44,7 +44,7 @@ RUN cd /tmp && git clone https://github.com/HarryKodden/irods_client_icommands -
     mkdir build && cd build && /opt/irods-externals/cmake*/bin/cmake -G "Unix Makefiles" ../ && make && make install
 
 # Install irods_auth_plugin_pam_interactive
-RUN cd /opt && ls -l && git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive && \
+RUN cd /opt && git clone https://github.com/HarryKodden/irods_auth_plugin_pam_interactive && \
     cd /opt/irods_auth_plugin_pam_interactive && \
     /opt/irods-externals/cmake*/bin/cmake -D IRODS_VERSION=${IRODS_VERSION} . && make && make install && cp pam_handshake_auth_check /usr/sbin
 
