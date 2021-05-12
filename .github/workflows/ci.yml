@@ -30,6 +30,10 @@ jobs:
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+    - name: Build iRODS...
+      run: |
+        ./bin/build.sh
+
     - name: create .env
       run: |
         echo -e "IRODS_JSON=${IRODS_JSON}\nIRODS_CERT=${IRODS_CERT}\n" > .env;

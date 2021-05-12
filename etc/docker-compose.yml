@@ -31,12 +31,7 @@ services:
       POSTGRES_PASSWORD: postgres
  
   icat:
-    build:
-      context: irods
-      dockerfile: Dockerfile.ubuntu
-      args:
-        IRODS_VERSION: ${IRODS_VERSION}
-        IRODS_USER: ${IRODS_USER}
+    image: irods_4.2.8
     hostname: icat
     restart: always
     links: 
@@ -76,12 +71,7 @@ services:
         /bin/bash /usr/local/bin/entrypoint.sh
     
   icommands:
-    build:
-      context: irods
-      dockerfile: Dockerfile.ubuntu
-      args:
-        IRODS_VERSION: ${IRODS_VERSION}
-        IRODS_USER: ${IRODS_USER}
+    image: irods_4.2.8
     hostname: icommands
     restart: always
     links: 

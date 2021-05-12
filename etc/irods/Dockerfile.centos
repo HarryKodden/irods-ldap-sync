@@ -16,7 +16,7 @@ ENV IRODS_VERSION=$IRODS_VERSION
 
 COPY --from=bionic /lib/x86_64-linux-gnu/security/pam_python.so /usr/lib64/security/pam_python.so
 
-RUN yum install -y epel-release wget locales sudo yum-plugin-priorities openssl-devel pam_devel which help2man
+RUN yum install -y epel-release wget locales sudo yum-plugin-priorities openssl-devel pam-devel which help2man
 RUN yum groupinstall -y 'Development Tools'
 
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
