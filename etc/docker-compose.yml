@@ -31,7 +31,7 @@ services:
       POSTGRES_PASSWORD: postgres
  
   icat:
-    image: irods_4.2.8
+    image: harrykodden/irods_4.2.8:latest
     hostname: icat
     restart: always
     links: 
@@ -71,7 +71,7 @@ services:
         /bin/bash /usr/local/bin/entrypoint.sh
     
   icommands:
-    image: irods_4.2.8
+    image: harrykodden/irods_4.2.8:latest
     hostname: icommands
     restart: always
     links: 

@@ -79,13 +79,22 @@ jobs:
       env:
         LOG_LEVEL: INFO
 
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Push image to docker hub
+      run: |
+        docker push harrykodden/irods_4.2.8:latest
+
     - name: Upload coverage data to coveralls.io
       run: coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COVERALLS_SERVICE_NAME: github
         COVERALLS_PARALLEL: true
-
 
   coveralls:
     name: Indicate completion to coveralls.io
