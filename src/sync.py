@@ -695,10 +695,13 @@ class iRODS(object):
                 logger.error("Exception during sync group: {}, error: {}".format(g.name, str(e)))
 
 
-def sync():
+def sync(dry_run = DRY_RUN):
 
+    DRY_RUN = dry_run
+    
     start_time = datetime.now()
     logger.info("SYNC started at: {}".format(start_time))
+    logger.info("DRY_RUN: {}".format(DRY_RUN))
 
     # Read LDAP...
 

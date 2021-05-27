@@ -40,6 +40,13 @@ These services can easily be started by:
 ```
 (cd etc; docker-compose up -d)
 ```
+
+You can verify the LDAP is running and initialised correctly by following command:
+
+```
+ldapsearch -x -H ldap://localhost:1389 -D cn=admin,dc=example,dc=org -b dc=example,dc=org -w secret
+```
+
 ## Gitpod
 
 This repository is fully prepared to operate on GitPod. You can launch the workspace on GitPod. During initialization of the workspace, docker is prepared as well. Both LDAP and iRODS containers are instantiated.

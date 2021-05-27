@@ -1,7 +1,7 @@
 import os
 import logging
 import pytest
-from src.sync import DRY_RUN, sync, Ldap, iRODS, ssh
+from src.sync import sync, Ldap, iRODS, ssh
 
 from tests.base_test import BaseTest
 
@@ -116,16 +116,14 @@ class TestAll(BaseTest):
     @pytest.mark.order(1)
     def test_ldap_content(self):
         with Ldap() as my_ldap:
-            logger.debug(my_ldap)
+            logger.info(my_ldap)
     
     @pytest.mark.order(2)
     def test_sync_ldap_to_irods_dry_run(self):
-        DRY_RUN = True
-        sync()
+        sync(dry_run=True)
 
     @pytest.mark.order(3)
     def test_sync_ldap_to_irods(self):
-        DRY_RUN = False
         sync()
 
         with Ldap() as my_ldap:
@@ -139,7 +137,7 @@ class TestAll(BaseTest):
     @pytest.mark.order(4)
     def test_irods_content(self):
         with iRODS() as my_irods:
-            logger.debug(my_irods)
+            logger.info(my_irods)
         
     @pytest.mark.order(5)
     def test_irods_iinit(self):
@@ -160,8 +158,6 @@ class TestAll(BaseTest):
         def update_user(with_data):
             with MutableLdap() as my_ldap:
             
-                DRY_RUN = False
-
                 my_ldap.add_person(self.user)
                 sync()
             
@@ -186,9 +182,7 @@ class TestAll(BaseTest):
             
     def test_irods_sync_group_updates(self):
         with MutableLdap() as my_ldap:
-        
-            DRY_RUN = False
-        
+                
             my_ldap.add_group(self.group)
             sync()
 
