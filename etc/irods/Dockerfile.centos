@@ -21,8 +21,9 @@ RUN yum groupinstall -y 'Development Tools'
 
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
+
 RUN rpm --import https://packages.irods.org/irods-signing-key.asc
-RUN wget -qO - https://packages.irods.org/renci-irods.yum.repo | tee /etc/yum.repos.d/renci-irods.yum.repo
+RUN wget --no-check-certificate -qO - https://packages.irods.org/renci-irods.yum.repo | tee /etc/yum.repos.d/renci-irods.yum.repo
 
 RUN yum install -y irods-devel-${IRODS_VERSION} \
                    irods-database-plugin-postgres-${IRODS_VERSION} \
