@@ -1,0 +1,11 @@
+---
+- hosts:
+    - workspace
+  become: true
+  vars_files:
+    - vars/default.yml
+
+  roles:
+    - common
+    - docker
+    - sync
