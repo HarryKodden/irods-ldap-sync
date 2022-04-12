@@ -1,0 +1,48 @@
+---
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ sync_directory }}"
+
+- name: Download requirements.txt
+  get_url:
+    url: "{{ sync_requirements }}"
+    dest: "{{ sync_directory }}/requirements.txt"
+    mode: '0440'
+
+- name: Download sync.py
+  get_url:
+    url: "{{ sync_source_script }}"
+    dest: "{{ sync_directory }}/sync.py"
+    mode: '0440'
+
+- name: "Copy Dockerfile"
+  ansible.builtin.copy:
+    src: Dockerfile
+    dest: "{{ sync_directory }}/Dockerfile"
+
+- name: Build sync image
+  community.docker.docker_image:
+    build:
+      path: "{{ sync_directory }}"
+    name: irods-sync
+    tag: latest
+    source: build
+
+- name: Cleanup
+  file:
+    state: absent
+    path: "{{ sync_directory }}"
+
+- name: create env file
+  template:
+    src: env.j2
+    dest: "/etc/irods-sync.env"
+
+- name: Run sync every 5 minute...
+  ansible.builtin.cron:
+    name: "iRODS Sync"
+    minute: "*/5"
+    job: "docker run --env-file /etc/irods-sync.env --network host irods-sync:latest 2>&1 >var/log/irods-sync.log"

@@ -1,0 +1,3 @@
+sync_directory: "/opt/sync"
+sync_requirements: "https://raw.githubusercontent.com/HarryKodden/irods-ldap-sync/main/requirements.txt"
+sync_source_script: "https://raw.githubusercontent.com/HarryKodden/irods-ldap-sync/main/src/sync.py"
