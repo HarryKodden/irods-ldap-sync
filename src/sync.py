@@ -170,6 +170,7 @@ class Ldap(object):
 
                 if not controls:
                     logger.error('The server ignores RFC 2696 control')
+                    
                 if not controls[0].cookie:
                     break
  
