@@ -173,7 +173,7 @@ class Ldap(object):
                     
                 if not controls[0].cookie:
                     break
- 
+
                 page_control.cookie = controls[0].cookie
 
         except ldap.LDAPError as e:
