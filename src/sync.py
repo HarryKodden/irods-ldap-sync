@@ -108,6 +108,8 @@ class Ldap(object):
     def __init__(self):
         # Establish connection with LDAP...
         try:
+            self.page_size = int(os.environ.get('LDAP_PAGE_SIZE', 50))
+
             self.session = ldap.initialize(os.environ['LDAP_HOST'])
             self.session.simple_bind_s(
                 os.environ['LDAP_BIND_DN'],
@@ -143,23 +145,35 @@ class Ldap(object):
             searchFilter="(objectclass=*)",
             retrieveAttributes=[]):
 
-        result = None
         try:
-            result_set = []
+            page_control = ldap.controls.SimplePagedResultsControl(True, size=self.page_size, cookie='')
+            result = []
+    
+            while True:
+    
+                page_id = self.session.search_ext(
+                    dn, searchScope,
+                    searchFilter,
+                    retrieveAttributes,
+                    serverctrls=[page_control]
+                )
+                _, result_data, _, serverctrls = self.session.result3(page_id)
 
-            ldap_result_id = self.session.search(
-                dn, searchScope,
-                searchFilter,
-                retrieveAttributes
-            )
-            while 1:
-                result_type, result_data = self.session.result(ldap_result_id, 0)
-                if (result_data == []):
+                
+                for r in result_data:
+                    result.append([r])
+
+                controls = [
+                    control for control in serverctrls
+                    if control.controlType == ldap.controls.SimplePagedResultsControl.controlType
+                ]
+
+                if not controls:
+                    logger.error('The server ignores RFC 2696 control')
+                if not controls[0].cookie:
                     break
-                elif result_type == ldap.RES_SEARCH_ENTRY:
-                    result_set.append(result_data)
-
-            result = result_set
+ 
+                page_control.cookie = controls[0].cookie
 
         except ldap.LDAPError as e:
             result = None
