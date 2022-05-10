@@ -29,7 +29,7 @@ services:
       MY_PASSWORD: $IRODS_DB_PASS
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: postgres
- 
+
   icat:
     image: harrykodden/irods_4.2.8:latest
     hostname: icat
@@ -69,7 +69,7 @@ services:
         cat /tmp/authorized_keys >> /home/${IRODS_USER}/.ssh/authorized_keys
         echo 'auth required pam_python.so /etc/pam.d/pam_irods.py' > /etc/pam.d/irods
         /bin/bash /usr/local/bin/entrypoint.sh
-    
+
   icommands:
     image: harrykodden/irods_4.2.8:latest
     hostname: icommands

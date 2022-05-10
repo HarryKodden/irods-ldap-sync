@@ -63,6 +63,7 @@ if not IRODS_PASS:
         logger.error("No iRODS Password provided, can not proceed.")
         exit(-1)
 
+SSH_SKIP = os.environ.get('SSH_SKIP', 'FALSE').upper() == 'TRUE'
 SSH_HOST = os.environ.get('SSH_HOST', 'localhost')
 SSH_PORT = os.environ.get('SSH_PORT', 2222)
 SSH_USER = os.environ.get('SSH_USER', 'root')
@@ -75,11 +76,17 @@ import subprocess
 
 class ssh():
     def __init__(self, command, host=SSH_HOST, port=SSH_PORT, user=SSH_USER):
+        global SSH_SKIP
+
         self.command = command
         self.host = host
         self.port = port
         self.user = user
-        self.run()
+
+        if SSH_SKIP:
+            logger.debug("SKIPPING: {}".format(command))
+        else:
+            self.run()
 
     def run(self):
 
