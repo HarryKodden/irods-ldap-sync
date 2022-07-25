@@ -27,6 +27,7 @@ IRODS_HOST = 'localhost'
 IRODS_PORT = 1247
 IRODS_USER = 'irods'
 IRODS_ZONE = 'tempZone'
+IRODS_AUTHENTICATION_SCHEME = 'native'
 
 DEFAULT_IRODS_ENVIRONMENT_FILE='~/.irods/irods_environment.json'
 
@@ -54,6 +55,8 @@ IRODS_PORT = os.environ.get('IRODS_PORT', IRODS_PORT)
 IRODS_USER = os.environ.get('IRODS_USER', IRODS_USER)
 
 IRODS_CERT = os.environ.get('IRODS_CERT', None)
+
+IRODS_AUTHENTICATION_SCHEME = os.environ.get('IRODS_AUTHENTICATION_SCHEME', IRODS_AUTHENTICATION_SCHEME)
 
 IRODS_PASS = os.environ.get('IRODS_PASS', None)
 if not IRODS_PASS:
@@ -359,7 +362,7 @@ class USER:
                     "irods_port": int(IRODS_PORT),
                     "irods_user_name": "{}".format(self.name),
                     "irods_zone_name": "{}".format(IRODS_ZONE),
-                    "irods_authentication_scheme": "PAM_INTERACTIVE",
+                    "irods_authentication_scheme": IRODS_AUTHENTICATION_SCHEME,
                     **IRODS_JSON
                 }, indent=4).replace('"', '\\""')
 
