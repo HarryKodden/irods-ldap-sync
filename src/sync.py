@@ -344,7 +344,7 @@ class USER:
             pubkeys = self.attributes.get('sshPublicKey', [])
 
             if len(pubkeys) > 0:
-                ssh("sudo su - {} -c \"touch .ssh/authorized_keys\"".format(
+                ssh("sudo su - {} -c \"echo > .ssh/authorized_keys\"".format(
                         self.name
                     )
                 )
