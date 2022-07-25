@@ -360,7 +360,7 @@ class USER:
                     "irods_port": int(IRODS_PORT),
                     "irods_user_name": "{}".format(self.name),
                     "irods_zone_name": "{}".format(IRODS_ZONE),
-                    "IRODS_AUTH": IRODS_AUTH,
+                    "irods_authentication_scheme": IRODS_AUTH,
                     **IRODS_JSON
                 }, indent=4).replace('"', '\\""')
 
