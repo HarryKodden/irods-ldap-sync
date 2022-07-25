@@ -343,15 +343,19 @@ class USER:
 
             pubkeys = self.attributes.get('sshPublicKey', [])
 
-            for k in pubkeys:
-                ssh("sudo su - {} -c \"echo '{}' > .ssh/authorized_keys\"".format(
-                        self.name, k
+            if len(pubkeys) > 0:
+                ssh("sudo su - {} -c \"touch .ssh/authorized_keys\"".format(
+                        self.name
+                    )
+                )
+                ssh("sudo su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(
+                        self.name
                     )
                 )
 
-            if len(pubkeys) > 0:
-                ssh("sudo su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(
-                        self.name
+            for k in pubkeys:
+                ssh("sudo su - {} -c \"echo '{}' >> .ssh/authorized_keys\"".format(
+                        self.name, k
                     )
                 )
 
