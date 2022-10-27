@@ -131,10 +131,12 @@ class Ldap(object):
             logger.error("Problem connecting to LDAP {} error: {}".format(os.environ['LDAP_HOST'], str(e)))
             exit(1)
 
+        self.collaborations = {}
         self.people = {}
         self.groups = {}
 
     def __enter__(self):
+        self.get_collaborations()
         self.get_people()
         self.get_groups()
 
@@ -148,6 +150,7 @@ class Ldap(object):
 
     def json(self):
         return {
+            'collaborations': self.collaborations,
             'people': self.people,
             'groups': self.groups
         }
@@ -205,6 +208,31 @@ class Ldap(object):
 
         return attributes
 
+    def get_collaborations(self):
+        ldap_co_key = os.environ.get('LDAP_CO_KEY', 'o')
+
+        for i in self.search(
+                os.environ.get('LDAP_BASE_DN',''),
+                searchFilter="(&(objectClass=organization)({}=*))".format(ldap_co_key),
+                retrieveAttributes=[]):
+
+            attributes = self.get_attributes(i[0][1])
+
+            if ldap_co_key not in attributes:
+                logger.error("Missing '{}' attribute in LDAP CO Object !".format(ldap_co_key))
+                continue
+
+            if len(attributes[ldap_co_key]) > 1:
+                logger.error("LDAP CO key '{}' must be 1 value !".format(ldap_co_key))
+                continue
+
+            key = attributes[ldap_co_key][0]
+
+            self.collaborations[key] = {
+                'attributes': attributes
+            }
+
+    
     def get_people(self):
         ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
 
@@ -764,7 +792,6 @@ def sync(dry_run = DRY_RUN):
         my_irods.sync()
 
     logger.info("SYNC completed at: {}".format(start_time))
-
 
 if __name__ == "__main__":
     sync()
