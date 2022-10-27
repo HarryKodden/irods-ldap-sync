@@ -14,6 +14,9 @@ from irods.session import iRODSSession
 from irods.column import Criterion
 from irods.models import User
 from irods.access import iRODSAccess
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -272,10 +275,10 @@ class Ldap(object):
 
 class USER:
 
-    def __init__(self, name, instance):
+    def __init__(self, name, instance, must_keep=False):
         self.name = name
-        self.must_keep = False
         self.irods_instance = instance
+        self.must_keep = must_keep
         self.attributes = None
 
         logger.debug("IRODS User: {}".format(self))
@@ -337,9 +340,12 @@ class USER:
                 self.irods_instance.metadata.remove_all()
 
             ssh("sudo useradd -m {} 2>/dev/null".format(self.name))
+            ssh("sudo groupadd -f davfs2")
+            ssh("sudo usermod -a -G davfs2 {}".format(self.name))
             ssh("sudo su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(
                 self.name
-                ))
+                )
+            )
 
             pubkeys = self.attributes.get('sshPublicKey', [])
 
@@ -393,10 +399,10 @@ class USER:
 
 class GROUP:
 
-    def __init__(self, name, instance):
+    def __init__(self, name, instance, must_keep=False):
         self.name = name
-        self.must_keep = False
         self.attributes = None
+        self.must_keep = must_keep
         self.members = {}
         self.irods_instance = instance
 
@@ -564,7 +570,7 @@ class iRODS(object):
     def __repr__(self):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
-    def add_user(self, name, instance=None):
+    def add_user(self, name, instance=None, must_keep=False):
         if name in self.users:
             return
 
@@ -572,9 +578,9 @@ class iRODS(object):
             logger.info("IRODS Create User: {}".format(name))
             instance = self.session.users.create(name, 'rodsuser')
 
-        self.users[name] = USER(name, instance)
+        self.users[name] = USER(name, instance, must_keep)
 
-    def add_group(self, name, instance=None):
+    def add_group(self, name, instance=None, must_keep=False):
         if name in self.groups:
             return
 
@@ -583,23 +589,22 @@ class iRODS(object):
             if not instance and not DRY_RUN:
                 instance = self.session.user_groups.create(name)
 
-        self.groups[name] = GROUP(name, instance)
+        self.groups[name] = GROUP(name, instance, must_keep)
 
     def get_users(self):
-        query = self.session.query(User.name, User.id, User.type).filter(
-            Criterion('=', User.type, 'rodsuser'))
-
+        query = self.session.query(User.name, User.type).all()
+        
         for result in query:
             name = result[User.name]
 
-            self.add_user(name, instance=self.session.users.get(name))
+            self.add_user(name, instance=self.session.users.get(name), must_keep=(User.type == 'rodsadmin'))
 
         logger.debug("iRODS Users: {}".format(self))
 
         return self
 
     def get_groups(self):
-        query = self.session.query(User.name, User.id, User.type).filter(
+        query = self.session.query(User.name, User.type).filter(
                 Criterion('=', User.type, 'rodsgroup'))
 
         for result in query:
@@ -733,6 +738,8 @@ def sync(dry_run = DRY_RUN):
     # Read LDAP...
 
     with iRODS() as my_irods:
+        logger.info(f"iRODS: {my_irods}")
+
         with Ldap() as my_ldap:
 
             # process iRODS people...
