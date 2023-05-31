@@ -60,7 +60,7 @@ For connecting to existing instances, make sure you have administrator credentia
 For a single pass execution you can execute:
 
 ```
-pytest
+python -m pytest
 ```
 
 ## Configuration
@@ -83,6 +83,10 @@ IRDDS_PORT|1247|The iRODS service port to connect to
 IRODS_USER|rods|iRODS administrator user
 IRODS_PASS|password|iRODS administrator password
 IRODS_ZONE|tempZone|The iRODS zone
+SSH_SKIP|false|Setup SSH per user True/False
+SSH_USER|root|Administrator user
+SSH_HOST|localhost|iRODS client host to setup users on
+SSH_PORT|2222|Port to connect to iRODS client host
 LOG_LEVEL|INFO|Loglevel can be **NONE**, **DEBUG**, **INFO**, **WARN**, **ERROR**
 DRY_RUN|False|Either **True** or **False**, when True No updates are performed to iRODS.
 
