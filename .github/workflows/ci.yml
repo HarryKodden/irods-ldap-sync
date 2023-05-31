@@ -36,7 +36,6 @@ jobs:
 
     - name: create .env
       run: |
-        echo -e "IRODS_JSON=${IRODS_JSON}\nIRODS_CERT=${IRODS_CERT}\n" > .env;
         echo -e "IRODS_HOST=${IRODS_HOST}\nIRODS_PORT=${IRODS_PORT}\nIRODS_USER=${IRODS_USER}\nIRODS_PASS=${IRODS_PASS}\nIRODS_ZONE=${IRODS_ZONE}\n" >> .env;
         echo -e "SSH_HOST=${SSH_HOST}\nSSH_PORT=${SSH_PORT}\nSSH_USER=${IRODS_USER}\n" >> .env;
         echo -e "LDAP_HOST=${LDAP_HOST}\nLDAP_CONFIG_PASSWORD=${LDAP_CONFIG_PASSWORD}\nLDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}\nLDAP_BASE_DN=${LDAP_BASE_DN}\nLDAP_BIND_DN=${LDAP_BIND_DN}\n" >> .env;
