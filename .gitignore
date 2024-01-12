@@ -8,3 +8,4 @@ sync_policies.pdf
 etc/irods_environment
 .jovianrc
 irods.crt
+src/.env

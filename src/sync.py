@@ -7,6 +7,7 @@ import json
 import logging
 import ssl
 import uuid
+import re
 
 from datetime import datetime
 
@@ -14,6 +15,10 @@ from irods.session import iRODSSession
 from irods.column import Criterion
 from irods.models import User
 from irods.access import iRODSAccess
+from irods.exception import CollectionDoesNotExist
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Setup logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -128,10 +133,12 @@ class Ldap(object):
             logger.error("Problem connecting to LDAP {} error: {}".format(os.environ['LDAP_HOST'], str(e)))
             exit(1)
 
+        self.collaborations = {}
         self.people = {}
         self.groups = {}
 
     def __enter__(self):
+        self.get_collaborations()
         self.get_people()
         self.get_groups()
 
@@ -145,6 +152,7 @@ class Ldap(object):
 
     def json(self):
         return {
+            'collaborations': self.collaborations,
             'people': self.people,
             'groups': self.groups
         }
@@ -201,6 +209,32 @@ class Ldap(object):
                 attributes[a].append(v.decode())
 
         return attributes
+
+    def get_collaborations(self):
+        ldap_co_key = os.environ.get('LDAP_CO_KEY', 'o')
+
+        for i in self.search(
+                os.environ.get('LDAP_BASE_DN',''),
+                searchFilter="(&(objectClass=organization)({}=*))".format(ldap_co_key),
+                retrieveAttributes=[]):
+
+            attributes = self.get_attributes(i[0][1])
+
+            if ldap_co_key not in attributes:
+                logger.error("Missing '{}' attribute in LDAP CO Object !".format(ldap_co_key))
+                continue
+
+            if len(attributes[ldap_co_key]) > 1:
+                logger.error("LDAP CO key '{}' must be 1 value !".format(ldap_co_key))
+                continue
+
+            key = attributes[ldap_co_key][0]
+            attributes['is_maingroup'] = "1"
+            l = key.split(".")
+            if (len(l)== 2 and re.match("ice*", l[1]) ):
+                self.collaborations[l[1]] = {
+                    'attributes': attributes
+                }
 
     def get_people(self):
         ldap_user_key = os.environ.get('LDAP_USER_KEY', 'uid')
@@ -265,17 +299,27 @@ class Ldap(object):
                     members.append(m)
 
             attributes['member'] = members
+            attributes['is_maingroup'] = "0"
+            l = key.split(".")
+            if (len(l)>= 3 and re.match("ice*", l[1]) and re.match("ice*", l[2]) ):
+                
+                attributes['master_group']= l[1]
+                self.groups[l[1]+ '.' + l[2]] = {
+                    'attributes': attributes
+                }
 
-            self.groups[key] = {
-                'attributes': attributes
-            }
+            if (len(l)>= 3 and re.match("ice*", l[1]) and re.match("@all", l[2]) ):
+                attributes['is_maingroup'] = "1"
+                self.groups[l[1]] = {
+                    'attributes': attributes
+                }
 
 class USER:
 
-    def __init__(self, name, instance):
+    def __init__(self, name, instance, must_keep=False):
         self.name = name
-        self.must_keep = False
         self.irods_instance = instance
+        self.must_keep = must_keep
         self.attributes = None
 
         logger.debug("IRODS User: {}".format(self))
@@ -309,8 +353,16 @@ class USER:
 
     def keep(self, attributes=None):
         self.must_keep = True
+        attributes = self.pick_relevant_attributes(attributes)
         self.attributes = attributes
         return self
+
+    def pick_relevant_attributes(self, attributes):
+        new_attributes={}
+        for a, v in attributes.items():
+            if a in ['displayName', 'mail']:
+               new_attributes["ice_" + a] = v
+        return new_attributes
 
     def sync(self, salvage_function):
 
@@ -319,7 +371,9 @@ class USER:
 
         if not self.must_keep:
             logger.info("IRODS Remove User: {}".format(self.name))
-
+            # if user has data 
+            # data should be deleted, trash should be deleted for 
+            # -u user and -M (running as admin)
             if not DRY_RUN:
                 try:
                     # this succeeds if user has no data attached...
@@ -335,68 +389,72 @@ class USER:
         else:
             if not DRY_RUN:
                 self.irods_instance.metadata.remove_all()
+            if self.irods_instance.type == "rodsuser": 
 
-            ssh("sudo useradd -m {} 2>/dev/null".format(self.name))
-            ssh("sudo su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(
-                self.name
-                ))
-
-            pubkeys = self.attributes.get('sshPublicKey', [])
-
-            if len(pubkeys) > 0:
-                ssh("sudo su - {} -c \"echo > .ssh/authorized_keys\"".format(
-                        self.name
-                    )
-                )
-                ssh("sudo su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(
-                        self.name
+                ssh("sudo useradd -m {} 2>/dev/null".format(self.name))
+                ssh("sudo groupadd -f davfs2")
+                ssh("sudo usermod -a -G davfs2 {}".format(self.name))
+                ssh("sudo su - {} -c \"mkdir -m 755 -p .ssh .irods\"".format(
+                    self.name
                     )
                 )
 
-            for k in pubkeys:
-                ssh("sudo su - {} -c \"echo '{}' >> .ssh/authorized_keys\"".format(
-                        self.name, k
+                pubkeys = self.attributes.get('sshPublicKey', [])
+
+                if len(pubkeys) > 0:
+                    ssh("sudo su - {} -c \"echo > .ssh/authorized_keys\"".format(
+                            self.name
+                        )
                     )
-                )
-
-            env = json.dumps({
-                    "irods_host": "icat",
-                    "irods_port": int(IRODS_PORT),
-                    "irods_user_name": "{}".format(self.name),
-                    "irods_zone_name": "{}".format(IRODS_ZONE),
-                    "irods_authentication_scheme": IRODS_AUTH,
-                    **IRODS_JSON
-                }, indent=4).replace('"', '\\""')
-
-            ssh('sudo su - {} -c "echo \'{}\' > {}"'.format(
-                    self.name, env, DEFAULT_IRODS_ENVIRONMENT_FILE
+                    ssh("sudo su - {} -c \"chmod 600 .ssh/authorized_keys\"".format(
+                            self.name
+                        )
                     )
-                )
 
-            env = f"""
-            irodsHost icat
-            irodsPort {IRODS_PORT}
-            irodsUserName {self.name}
-            irodsZone {IRODS_ZONE}
-            """
-
-            ssh('sudo su - {} -c "echo \'{}\' > .irods/.irodsEnv"'.format(
-                    self.name, env
+                for k in pubkeys:
+                    ssh("sudo su - {} -c \"echo '{}' >> .ssh/authorized_keys\"".format(
+                            self.name, k
+                        )
                     )
-                )
+
+                env = json.dumps({
+                        "irods_host": "icat",
+                        "irods_port": int(IRODS_PORT),
+                        "irods_user_name": "{}".format(self.name),
+                        "irods_zone_name": "{}".format(IRODS_ZONE),
+                        "irods_authentication_scheme": IRODS_AUTH,
+                        **IRODS_JSON
+                    }, indent=4).replace('"', '\\""')
+
+                ssh('sudo su - {} -c "echo \'{}\' > {}"'.format(
+                        self.name, env, DEFAULT_IRODS_ENVIRONMENT_FILE
+                        )
+                    )
+
+                env = f"""
+                irodsHost icat
+                irodsPort {IRODS_PORT}
+                irodsUserName {self.name}
+                irodsZone {IRODS_ZONE}
+                """
+
+                ssh('sudo su - {} -c "echo \'{}\' > .irods/.irodsEnv"'.format(
+                        self.name, env
+                        )
+                    )
 
             if not DRY_RUN and self.attributes:
                 for k, v in self.attributes.items():
                     for i in v:
-                        self.irods_instance.metadata.add(k, i)
+                        self.irods_instance.metadata.set(k, i)
 
 
 class GROUP:
 
-    def __init__(self, name, instance):
+    def __init__(self, name, instance, must_keep=False):
         self.name = name
-        self.must_keep = False
         self.attributes = None
+        self.must_keep = must_keep
         self.members = {}
         self.irods_instance = instance
 
@@ -436,15 +494,53 @@ class GROUP:
 
     def keep(self, attributes=None):
         self.must_keep = True
+        #only keep relevant attributes:
+        #list: description, displayName, member, is_maingroup
+        attributes = self.pick_relevant_attributes(attributes)
         self.attributes = attributes
         return self
+
+    def pick_relevant_attributes(self, attributes):
+        new_attributes={}
+        for a, v in attributes.items():
+            if a in ['description', 'displayName', 'member', 'is_maingroup', 'master_group']:
+               new_attributes["ice_" + a] = v
+        new_attributes
+        return new_attributes
 
     def member(self, member):
         self.must_keep = True
         self.members[member] = True
         return self
 
-    def sync(self, salvage_function):
+    def remove_collection(self):
+        if not self.irods_instance:
+            return
+        coll_path = "/{}/home/{}".format(IRODS_ZONE, self.name)
+        try:
+            coll_obj = irods_session.collections.get(coll_path)
+        except CollectionDoesNotExist as e:
+            logger.info("collection {} already removed".format(str(self.name)))
+            return
+
+        acl = iRODSAccess('admin:own', coll_path, IRODS_USER, IRODS_ZONE)
+        irods_session.permissions.set(acl)
+        contents =coll_obj.walk(topdown=True)
+        #TODO check if collection has data and move it before deleting it
+        #make sure rods have access to remove collection
+        try:
+            coll_obj.remove(recurse=True, force=True)
+        except Exception as e:
+            logger.error("Error removing collection: {}".format(str(e)))
+        print(f"{self.name} removed")
+
+    def move_data_to_master_group(self):
+        #TODO move data from subgroup collection to master group
+        # collection for subgroups should not exist and it should be deleted if 
+        # they exist but if there is data, move it to master group collection
+        pass
+
+    def sync(self, salvage_function): 
 
         if not self.irods_instance:
             return
@@ -491,14 +587,18 @@ class GROUP:
                     )
                     if not DRY_RUN:
                         self.irods_instance.addmember(m)
+            if (self.attributes['ice_is_maingroup'] == '0' ):
+                self.remove_collection()
 
-            if not DRY_RUN:
-                self.irods_instance.metadata.remove_all()
+            self.irods_instance.metadata.set("ice_is_maingroup", self.attributes['ice_is_maingroup'] )
+            if self.attributes['ice_is_maingroup'] == "0":
+                atts = self.attributes['ice_master_group']
+
+                self.irods_instance.metadata.set('ice_master_group', self.attributes['ice_master_group'] )
 
             if not DRY_RUN and self.attributes:
                 for k, v in self.attributes.items():
-                    for i in v:
-                        self.irods_instance.metadata.add(k, i)
+                    self.irods_instance.metadata.set(k, v)
 
 irods_session = None
 
@@ -549,7 +649,6 @@ class iRODS(object):
 
         self.get_users()
         self.get_groups()
-        
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -564,7 +663,7 @@ class iRODS(object):
     def __repr__(self):
         return json.dumps(self.json(), indent=4, sort_keys=True)
 
-    def add_user(self, name, instance=None):
+    def add_user(self, name, instance=None, must_keep=False):
         if name in self.users:
             return
 
@@ -572,9 +671,9 @@ class iRODS(object):
             logger.info("IRODS Create User: {}".format(name))
             instance = self.session.users.create(name, 'rodsuser')
 
-        self.users[name] = USER(name, instance)
+        self.users[name] = USER(name, instance, must_keep)
 
-    def add_group(self, name, instance=None):
+    def add_group(self, name, instance=None, must_keep=False):
         if name in self.groups:
             return
 
@@ -583,36 +682,45 @@ class iRODS(object):
             if not instance and not DRY_RUN:
                 instance = self.session.user_groups.create(name)
 
-        self.groups[name] = GROUP(name, instance)
+        self.groups[name] = GROUP(name, instance, must_keep)
 
     def get_users(self):
-        query = self.session.query(User.name, User.id, User.type).filter(
-            Criterion('=', User.type, 'rodsuser'))
-
+        query = self.session.query(User.name, User.type).filter(User.type != 'rodsgroup')
         for result in query:
             name = result[User.name]
 
-            self.add_user(name, instance=self.session.users.get(name))
+            self.add_user(name, instance=self.session.users.get(name), must_keep=(result[User.type] == 'rodsadmin'))
 
         logger.debug("iRODS Users: {}".format(self))
 
         return self
 
+    def is_group(self, group_name):
+        query = self.session.query(User.name, User.type).filter(
+                Criterion('=', User.type, 'rodsgroup')).filter(
+                    Criterion('=', User.name, group_name)
+                ).all()
+        if not query:
+            return False
+        else:
+            return True
+
     def get_groups(self):
-        query = self.session.query(User.name, User.id, User.type).filter(
+        query = self.session.query(User.name, User.type).filter(
                 Criterion('=', User.type, 'rodsgroup'))
 
         for result in query:
             name = result[User.name]
+            #probably this "if" will never be satisfied as the type is rodsgroup
             if name in ['rodsadmin', 'public']:
                 continue
 
             instance = self.session.user_groups.get(name)
 
-            if 'DELETED' in instance.metadata.keys():
+            if 'ice_DELETED' in instance.metadata.keys():
                 logger.debug("Deleted group detected")
-                logger.debug("* Original user/group: {}".format(instance.metadata.get_one("DELETED").value))
-                logger.debug("* Timestamp: {}".format(instance.metadata.get_one("TIMESTAMP").value))
+                logger.debug("* Original user/group: {}".format(instance.metadata.get_one('ice_DELETED').value))
+                logger.debug("* Timestamp: {}".format(instance.metadata.get_one('ice_TIMESTAMP').value))
                 logger.debug("* Owners: {}".format([u.name for u in instance.members]))
                 continue
 
@@ -633,8 +741,10 @@ class iRODS(object):
             for c in collection.subcollections:
                 show_collection(title, c, level+1)
 
-        def data_salvager(obsolete):
+        def msd_user_salvager(obsolete):
+            pass
 
+        def data_salvager(obsolete):
             def destination(src, dst, target):
                 path = target[len(src):]
 
@@ -655,12 +765,15 @@ class iRODS(object):
             if isinstance(obsolete, GROUP) and len(obsolete.members) > 0:
                 raise Exception("Obsolete group still has members")
 
+            if obsolete.name in ['public', 'user1']:
+                return
+
             try:
                 logger.info("*** Create salvage group...")
 
                 instance = self.session.user_groups.create(str(uuid.uuid4()))
-                instance.metadata.add("DELETED", obsolete.name)
-                instance.metadata.add("TIMESTAMP", datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+                instance.metadata.set('ice_DELETED', obsolete.name)
+                instance.metadata.set('ice_TIMESTAMP', datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
                 instance.addmember(IRODS_USER)
 
                 src = "/{}/home/{}".format(IRODS_ZONE, obsolete.name)
@@ -711,8 +824,9 @@ class iRODS(object):
 
         for _, u in self.users.items():
             try:
-                u.sync(data_salvager)
+                u.sync(msd_user_salvager)
             except Exception:
+                logger.error(f"{Exception}")
                 logger.error("Exception during sync user: {}".format(u.name))
 
         for _, g in self.groups.items():
@@ -720,7 +834,6 @@ class iRODS(object):
                 g.sync(data_salvager)
             except Exception as e:
                 logger.error("Exception during sync group: {}, error: {}".format(g.name, str(e)))
-
 
 def sync(dry_run = DRY_RUN):
 
@@ -733,6 +846,8 @@ def sync(dry_run = DRY_RUN):
     # Read LDAP...
 
     with iRODS() as my_irods:
+        # logger.info(f"iRODS: {my_irods}")
+
         with Ldap() as my_ldap:
 
             # process iRODS people...
@@ -742,6 +857,8 @@ def sync(dry_run = DRY_RUN):
 
                 my_irods.users[u].keep(my_ldap.people[u]['attributes'])
 
+            #as collaboration members are not set when 
+            # syncing collaboratoin from ldap, we only get groups
             # process iRODS groups...
             for g in my_ldap.groups.keys():
                 if g not in my_irods.groups:
@@ -752,12 +869,11 @@ def sync(dry_run = DRY_RUN):
                 for m in my_ldap.groups[g]['attributes']['member']:
                     my_irods.groups[g].member(m)
 
-    
         # Write changes to iRODS
         my_irods.sync()
 
     logger.info("SYNC completed at: {}".format(start_time))
 
-
 if __name__ == "__main__":
+    irods_session = None
     sync()
